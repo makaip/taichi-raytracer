@@ -5,11 +5,12 @@ import os
 
 from typing import TextIO
 
-from ray import Ray
+from ray import *
+from hittable import *
 
 vec3 = ti.types.vector(3, float)
 
-image_width, image_height = 400, 225
+image_width, image_height = 800, 450
 pixels = None
 
 focal_length = 1.0
@@ -28,30 +29,15 @@ view_upper_left = camera_center - vec3(0, 0, focal_length) - view_u / 2 - view_v
 init_pixel_loc = view_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v)
 
 @ti.func
-def hit_sphere(center: vec3, radius: float, ray: Ray):
-    oc = center - ray.origin
-
-    a = ti.math.dot(ray.direction, ray.direction)
-    b = -2 * ti.math.dot(ray.direction, oc)
-    c = ti.math.dot(oc, oc) - (radius ** 2)
-
-    disc = (b ** 2) - (4 * a * c)
-
-    t = -1.0
-
-    if disc >= 0:
-        t = (-b - ti.sqrt(disc)) / (2.0 * a)
+def ray_color(
+    ray: Ray, 
+    world: ti.template()
+    ):
     
-    return t
+    rec = HitRecord()
 
-@ti.func
-def ray_color(ray: Ray):
-    t = hit_sphere(vec3(0, 0, -1), 0.5, ray)
-    color = vec3(0, 0, 0)
-
-    if t > 0:
-        normal = (ray.at(t) - vec3(0, 0, -1)).normalized()
-        color = 0.5 * vec3(normal.x + 1, normal.y + 1, normal.z + 1)
+    if world.hit(ray, 0, ti.math.inf, rec):
+        color = 0.5 * (rec.normal + vec3(1, 1, 1))
     else:
         unit_direction = ray.direction.normalized()
         a = 0.5 * (unit_direction[1] + 1)
@@ -60,12 +46,12 @@ def ray_color(ray: Ray):
     return color
 
 @ti.kernel
-def render():
+def render(world: ti.template()):
     for i, j in pixels:
         pixel_center = init_pixel_loc + (j * pixel_delta_u) + (i * pixel_delta_v)
         ray_dir = pixel_center - camera_center
         ray = Ray(camera_center, ray_dir)
-        pixels[i, j] = ray_color(ray)
+        pixels[i, j] = ray_color(ray, world)
 
 
 def main():
@@ -82,8 +68,12 @@ def main():
         )
     )
 
-    render()
+    world = HittableList(max_objects=100)
+    world.add(Sphere(vec3(0, 0, -1), 0.5))
+    world.add(Sphere(vec3(0, -100.5, -1), 100))
 
+    render(world)
+    
     img = pixels.to_numpy()
     img = (img * 255).astype(np.uint8)
     Image.fromarray(img).save("out.png")
