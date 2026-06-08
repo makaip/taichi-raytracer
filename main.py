@@ -9,21 +9,10 @@ from utils import *
 from hittable import *
 from camera import *
 
-vec3 = ti.types.vector(3, float)
-
 def main():
-    global pixels
-
     ti.init(arch=ti.gpu)
-
-    pixels = ti.Vector.field(
-        n=3,
-        dtype=float,
-        shape=(
-            Camera.image_width,
-            Camera.image_height
-        )
-    )
+    
+    camera = Camera()
 
     world = HittableList(max_objects=100)
     world.add(Sphere(center=ti.Vector([0.0, 0.0, -1.0]), radius=0.5))
@@ -43,8 +32,8 @@ def main():
     #     gui.set_image(pixels)
     #     gui.show()
 
-    Camera.render(world)
-    img = pixels.to_numpy()
+    camera.render(world)
+    img = camera.pixels.to_numpy()
     img = img.transpose(1, 0, 2)
     img = np.flip(img, axis=0)
     img = (img * 255).astype(np.uint8)

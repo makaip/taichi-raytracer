@@ -1,48 +1,41 @@
 from hittable import *
 
-pixels = None
-
 vec3 = ti.types.vector(3, float)
 
-@ti.dataclass
+@ti.data_oriented
 class Camera:
-    image_height: int
-    center: vec3
-    pixel00_loc: vec3
-    pixel_delta_u: vec3
-    pixel_delta_v: vec3
-
+    pixels: ti.Vector.field
     def __init__(self):
-        image_width = 800
-        image_height = 450
+        self.image_width = 800
+        self.image_height = 450
 
-        pixels = ti.Vector.field(
+        self.focal_length = 1.0
+        self.view_height = 2.0
+        self.view_width = self.view_height * (self.image_width / self.image_height)
+
+        # use ti.Vector outside @ti scope
+        self.camera_center = ti.Vector([0.0, 0.0, 0.0])
+
+        self.view_u = ti.Vector([self.view_width, 0.0, 0.0])
+        self.view_v = ti.Vector([0.0, self.view_height, 0.0])
+
+        self.pixel_delta_u = self.view_u / self.image_width
+        self.pixel_delta_v = self.view_v / self.image_height
+
+        self.view_upper_left = self.camera_center - \
+            ti.Vector([0.0, 0.0, self.focal_length]) - \
+            (self.view_u / 2.0) - (self.view_v / 2.0)
+        self.init_pixel_loc = self.view_upper_left + \
+            0.5 * (self.pixel_delta_u + self.pixel_delta_v)
+            
+        self.pixels = ti.Vector.field(
             n=3,
             dtype=float,
             shape=(
-                image_width,
-                image_height
+                self.image_width,
+                self.image_height
             )
         )
-
-        focal_length = 1.0
-        view_height = 2.0
-        view_width = view_height * (image_width / image_height)
-
-        # use ti.Vector outside @ti scope
-        camera_center = ti.Vector([0.0, 0.0, 0.0])
-
-        view_u = ti.Vector([view_width, 0.0, 0.0])
-        view_v = ti.Vector([0.0, view_height, 0.0])
-
-        pixel_delta_u = view_u / image_width
-        pixel_delta_v = view_v / image_height
-
-        view_upper_left = camera_center - \
-            ti.Vector([0.0, 0.0, focal_length]) - \
-            (view_u / 2.0) - (view_v / 2.0)
-        init_pixel_loc = view_upper_left + \
-            0.5 * (pixel_delta_u + pixel_delta_v)
 
     @ti.func
     def ray_color(
@@ -63,10 +56,12 @@ class Camera:
         return color
 
     @ti.kernel
-    def render(self, world: ti.template()):
-        for i, j in pixels:
+    def render(
+        self, 
+        world: ti.template()
+    ):
+        for i, j in self.pixels:
             pixel_center = self.init_pixel_loc + (i * self.pixel_delta_u) + (j * self.pixel_delta_v)
             ray_dir = pixel_center - self.camera_center
             ray = Ray(self.camera_center, ray_dir)
-            pixels[i, j] = self.ray_color(ray, world)
-
+            self.pixels[i, j] = self.ray_color(ray, world)
