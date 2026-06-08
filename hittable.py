@@ -3,10 +3,9 @@ from abc import abstractmethod
 import taichi as ti
 import numpy as np
 
-from ray import Ray
+from utils import *
 
 vec3 = ti.types.vector(3, float)
-
 
 @ti.dataclass
 class HitRecord:
@@ -50,11 +49,10 @@ class HittableList():
     def hit(
         self,
         ray: Ray,
-        tmin: float,
-        tmax: float,
+        ray_t: Interval
     ) -> tuple:
         hit = False
-        closest = tmax
+        closest = ray_t.max
 
         final_rec = HitRecord(
             p=vec3(0),
@@ -64,7 +62,7 @@ class HittableList():
         )
 
         for i in range(self.count[None]):
-            is_hit, temp_rec = self.objects[i].hit(ray, tmin, closest)
+            is_hit, temp_rec = self.objects[i].hit(ray, Interval(ray_t.min, closest))
 
             if is_hit:
                 hit = True
@@ -73,7 +71,7 @@ class HittableList():
 
         return hit, final_rec
 
-
+# hittable
 @ti.dataclass
 class Sphere():
     center: vec3
@@ -83,8 +81,7 @@ class Sphere():
     def hit(
         self,
         ray: Ray,
-        tmin: float,
-        tmax: float,
+        ray_t: Interval
     ) -> tuple:
         oc = self.center - ray.origin
 
@@ -101,10 +98,10 @@ class Sphere():
             sqrtd = ti.sqrt(disc)
             root = (h - sqrtd) / a
 
-            if root <= tmin or tmax <= root:
+            if not ray_t.surrounds(root):
                 root = (h + sqrtd) / a
 
-            if root > tmin and root < tmax:
+            if ray_t.surrounds(root):
                 is_hit = True
                 rec.t = root
                 rec.p = ray.at(rec.t)

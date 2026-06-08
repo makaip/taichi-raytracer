@@ -5,7 +5,7 @@ import os
 
 from typing import TextIO
 
-from ray import *
+from utils import *
 from hittable import *
 
 vec3 = ti.types.vector(3, float)
@@ -33,7 +33,7 @@ def ray_color(
     ray: Ray, 
     world: ti.template()
 ):
-    is_hit, rec = world.hit(ray, 0.0, ti.math.inf)
+    is_hit, rec = world.hit(ray, Interval(0, ti.math.inf))
     color = vec3(0,0,0)
 
     if is_hit:
