@@ -25,33 +25,7 @@ class HitRecord:
 
 
 @ti.data_oriented
-class Hittable:
-    def __init__(
-            self,
-            ray: Ray,
-            tmin: float,
-            tmax: float,
-            rec: HitRecord
-    ):
-        self.ray = ray
-        self.tmin = tmin
-        self.tmax = tmax
-        self.rec = rec
-
-    @ti.func
-    def hit(
-        self,
-        origin: vec3,
-        direction: vec3,
-        tmin: float,
-        tmax: float,
-        rec: HitRecord
-    ) -> float:
-        return 0
-
-
-@ti.data_oriented
-class HittableList(Hittable):
+class HittableList():
     def __init__(self, max_objects=100):
         self.objects = Sphere.field(shape=max_objects)
         self.count = ti.field(
@@ -72,13 +46,13 @@ class HittableList(Hittable):
         else:
             raise OverflowError("HittableList is full")
 
+    @ti.func
     def hit(
         self,
         ray: Ray,
         tmin: float,
         tmax: float,
-        rec: HitRecord
-    ) -> bool:
+    ) -> tuple:
         hit = False
         closest = tmax
 
@@ -101,18 +75,17 @@ class HittableList(Hittable):
 
 
 @ti.dataclass
-class Sphere(Hittable):
-    def __init__(self, center: vec3, radius: float):
-        self.center = center
-        self.radius = radius
+class Sphere():
+    center: vec3
+    radius: float
 
+    @ti.func
     def hit(
         self,
         ray: Ray,
         tmin: float,
         tmax: float,
-        rec: HitRecord
-    ) -> bool:
+    ) -> tuple:
         oc = self.center - ray.origin
 
         a = ray.direction.norm_sqr()
@@ -121,28 +94,22 @@ class Sphere(Hittable):
 
         disc = (h ** 2) - (a * c)
 
-        result = None
+        is_hit = False
+        rec = HitRecord(p=vec3(0), normal=vec3(0), t=0.0, front_face=False)
 
-        if (disc < 0):
-            result = False
-        else:
+        if disc >= 0:
             sqrtd = ti.sqrt(disc)
             root = (h - sqrtd) / a
 
-            if (root <= tmin or tmax <= root):
+            if root <= tmin or tmax <= root:
                 root = (h + sqrtd) / a
 
-                if (root <= tmin or tmax <= root):
-                    result = False
-                else:
-                    result = True
-            else:
-                result = True
+            if root > tmin and root < tmax:
+                is_hit = True
+                rec.t = root
+                rec.p = ray.at(rec.t)
+                outward_normal = (rec.p - self.center) / self.radius
+                rec.set_face_normal(ray, outward_normal)
 
-        if result is True:
-            rec.t = root
-            rec.p = ray.at(rec.t)
-            outward_normal = (rec.p - self.center) / self.radius
-            rec.set_face_normal(ray, outward_normal)
+        return is_hit, rec
 
-        return result
