@@ -29,5 +29,6 @@ class Interval:
     def surrounds(self, x: float) -> bool:
         return self.min < x and x < self.max
 
+
 empty_interval = Interval(ti.math.inf, -ti.math.inf)
 universe_interval = Interval(-ti.math.inf, ti.math.inf)

@@ -10,17 +10,20 @@ from hittable import *
 
 vec3 = ti.types.vector(3, float)
 
-image_width, image_height = 800, 450
+image_width = 800
+image_height = 450
+
 pixels = None
 
 focal_length = 1.0
 
-view_height = 2
+view_height = 2.0
 view_width = view_height * (image_width / image_height)
+
 camera_center = ti.Vector([0.0, 0.0, 0.0]) # use ti.Vector outside @ti scope
 
 view_u = ti.Vector([view_width, 0.0, 0.0])
-view_v = ti.Vector([0.0, -view_height, 0.0])
+view_v = ti.Vector([0.0, view_height, 0.0])
 
 pixel_delta_u = view_u / image_width
 pixel_delta_v = view_v / image_height
@@ -48,7 +51,7 @@ def ray_color(
 @ti.kernel
 def render(world: ti.template()):
     for i, j in pixels:
-        pixel_center = init_pixel_loc + (j * pixel_delta_u) + (i * pixel_delta_v)
+        pixel_center = init_pixel_loc + (i * pixel_delta_u) + (j * pixel_delta_v)
         ray_dir = pixel_center - camera_center
         ray = Ray(camera_center, ray_dir)
         pixels[i, j] = ray_color(ray, world)
@@ -63,8 +66,8 @@ def main():
         n=3,
         dtype=float,
         shape=(
-            image_height,
-            image_width
+            image_width,
+            image_height
         )
     )
 
@@ -72,9 +75,24 @@ def main():
     world.add(Sphere(center=ti.Vector([0.0, 0.0, -1.0]), radius=0.5))
     world.add(Sphere(center=ti.Vector([0.0, -100.5, -1.0]), radius=100.0))
 
+    # gui = ti.GUI(
+    #     "raytrace test", 
+    #     (image_width, image_height),
+    #     fast_gui=True
+    # )
+
+    # while True:
+    #     if gui.get_event(ti.GUI.ESCAPE):
+    #         break
+
+    #     render(world)
+    #     gui.set_image(pixels)
+    #     gui.show()
+
     render(world)
-    
     img = pixels.to_numpy()
+    img = img.transpose(1, 0, 2)
+    img = np.flip(img, axis=0)
     img = (img * 255).astype(np.uint8)
     Image.fromarray(img).save("out.png")
 
