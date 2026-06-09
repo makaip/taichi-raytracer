@@ -1,4 +1,5 @@
 from hittable import *
+from utils import rotate_about_y, rotate_about_z
 
 vec3 = ti.types.vector(3, float)
 
@@ -14,7 +15,7 @@ class Camera:
         self.view_width = self.view_height * (self.image_width / self.image_height)
 
         # use ti.Vector outside @ti scope
-        self.camera_center = ti.Vector([0.0, 0.0, 0.0])
+        self.position = ti.Vector([0.0, 0.0, 0.0])
 
         self.view_u = ti.Vector([self.view_width, 0.0, 0.0])
         self.view_v = ti.Vector([0.0, self.view_height, 0.0])
@@ -22,9 +23,10 @@ class Camera:
         self.pixel_delta_u = self.view_u / self.image_width
         self.pixel_delta_v = self.view_v / self.image_height
 
-        self.view_upper_left = self.camera_center - \
+        self.view_upper_left = self.position - \
             ti.Vector([0.0, 0.0, self.focal_length]) - \
             (self.view_u / 2.0) - (self.view_v / 2.0)
+            
         self.init_pixel_loc = self.view_upper_left + \
             0.5 * (self.pixel_delta_u + self.pixel_delta_v)
             
@@ -36,6 +38,46 @@ class Camera:
                 self.image_height
             )
         )
+    
+    def handle_motion(self, gui: ti.GUI):
+        # navigation
+        if gui.is_pressed('w'):
+            self.position[2] -= 0.05
+        if gui.is_pressed('s'):
+            self.position[2] += 0.05
+        if gui.is_pressed('a'):
+            self.position[0] -= 0.05
+        if gui.is_pressed('d'):
+            self.position[0] += 0.05
+        if gui.is_pressed('q'):
+            self.position[1] -= 0.05
+        if gui.is_pressed('e'):
+            self.position[1] += 0.05
+        
+        # rotation - broken rn fix later idk
+        # if gui.is_pressed(ti.GUI.LEFT):
+        #     self.view_u = rotate_about_y(self.view_u, 0.05)
+        #     self.view_v = rotate_about_y(self.view_v, 0.05)
+        # if gui.is_pressed(ti.GUI.RIGHT):
+        #     self.view_u = rotate_about_y(self.view_u, -0.05)
+        #     self.view_v = rotate_about_y(self.view_v, -0.05)
+        # if gui.is_pressed(ti.GUI.UP):
+        #     self.view_u = rotate_about_z(self.view_u, 0.05)
+        #     self.view_v = rotate_about_z(self.view_v, 0.05)
+        # if gui.is_pressed(ti.GUI.DOWN):
+        #     self.view_u = rotate_about_z(self.view_u, -0.05)
+        #     self.view_v = rotate_about_z(self.view_v, -0.05)
+        
+        # update view params
+        self.pixel_delta_u = self.view_u / self.image_width
+        self.pixel_delta_v = self.view_v / self.image_height
+
+        self.view_upper_left = self.position - \
+            ti.Vector([0.0, 0.0, self.focal_length]) - \
+            (self.view_u / 2.0) - (self.view_v / 2.0)
+            
+        self.init_pixel_loc = self.view_upper_left + \
+            0.5 * (self.pixel_delta_u + self.pixel_delta_v)
 
     @ti.func
     def ray_color(
@@ -55,13 +97,32 @@ class Camera:
 
         return color
 
+    # kernel treats globals as constants
+    # so we pass any live params as args through render()
     @ti.kernel
-    def render(
+    def render_kernel(
         self, 
-        world: ti.template()
+        world: ti.template(),
+        
+        position: vec3,
+        init_pixel_loc: vec3,
+        pixel_delta_u: vec3,
+        pixel_delta_v: vec3,
     ):
         for i, j in self.pixels:
-            pixel_center = self.init_pixel_loc + (i * self.pixel_delta_u) + (j * self.pixel_delta_v)
-            ray_dir = pixel_center - self.camera_center
-            ray = Ray(self.camera_center, ray_dir)
+            pixel_center = init_pixel_loc + (i * pixel_delta_u) + (j * pixel_delta_v)
+            ray_dir = pixel_center - position
+            ray = Ray(position, ray_dir)
             self.pixels[i, j] = self.ray_color(ray, world)
+    
+    def render(
+        self,
+        world: ti.template()
+    ):
+        self.render_kernel(
+            world,
+            self.position,
+            self.init_pixel_loc,
+            self.pixel_delta_u,
+            self.pixel_delta_v
+        )

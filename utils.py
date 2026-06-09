@@ -30,5 +30,27 @@ class Interval:
         return self.min < x and x < self.max
 
 
+def rotate_about_z(vec: vec3, angle: float) -> vec3:
+    c, s = ti.math.cos(angle), ti.math.sin(angle)
+    rot_matrix = ti.math.mat3([
+        [c,  -s,   0.0],
+        [s,   c,   0.0],
+        [0.0, 0.0, 1.0]
+    ])
+    
+    return rot_matrix @ vec
+
+
+def rotate_about_y(vec: vec3, angle: float) -> vec3:
+    c, s = ti.math.cos(angle), ti.math.sin(angle)
+    rot_matrix = ti.math.mat3([
+        [c,   0.0, s],
+        [0.0, 1.0, 0.0],
+        [-s,  0.0, c]
+    ])
+    
+    return rot_matrix @ vec
+
+
 empty_interval = Interval(ti.math.inf, -ti.math.inf)
 universe_interval = Interval(-ti.math.inf, ti.math.inf)
