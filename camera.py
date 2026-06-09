@@ -22,6 +22,8 @@ class Camera:
             max_depth: int,
             gamma: float
     ):
+        self.speed = 0.1
+        
         self.samples_per_pixel = samples_per_pixel
 
         self.image_width = image_width
@@ -38,7 +40,7 @@ class Camera:
         self.vup = ti.Vector([0.0, 1.0, 0.0])
 
         self.position = ti.Vector([0.0, 0.0, 0.0])
-        self.rotation = ti.Vector([0.0, 0.0, 1.0])      # camera normal (facing fowards)
+        self.rotation = ti.Vector([0.0, 0.0, 0.0])      # camera normal (facing fowards)
 
         # ___________________________________________
 
@@ -47,7 +49,7 @@ class Camera:
         self.view_height = 2 * h * self.focal_length
         self.view_width = self.view_height * (self.image_width / self.image_height)
 
-        self.yaw = 0.0
+        self.yaw = math.radians(180)
         self.pitch = 0.0
 
         self.update_view()
@@ -87,17 +89,17 @@ class Camera:
     def handle_motion(self, gui: ti.GUI):
         # navigation
         if gui.is_pressed('w'):
-            self.position[2] += 0.1
+            self.position -= self.rotation * self.speed
         if gui.is_pressed('s'):
-            self.position[2] -= 0.1
+            self.position += self.rotation * self.speed
         if gui.is_pressed('a'):
-            self.position[0] += 0.1
+            self.position -= self.yaw_basis * self.speed
         if gui.is_pressed('d'):
-            self.position[0] -= 0.1
+            self.position += self.yaw_basis * self.speed
         if gui.is_pressed('e'):
-            self.position[1] += 0.1
+            self.position += self.vup * self.speed
         if gui.is_pressed('q'):
-            self.position[1] -= 0.1
+            self.position -= self.vup * self.speed
         
         # rotation
         if gui.is_pressed(ti.GUI.LEFT):
@@ -105,10 +107,10 @@ class Camera:
         if gui.is_pressed(ti.GUI.RIGHT):
             self.yaw += 0.05
         if gui.is_pressed(ti.GUI.UP):
-            self.pitch += 0.05
+            self.pitch -= 0.05
             self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
         if gui.is_pressed(ti.GUI.DOWN):
-            self.pitch -= 0.05
+            self.pitch += 0.05
             self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
         
         self.update_view()
