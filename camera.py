@@ -6,12 +6,24 @@ vec3 = ti.types.vector(3, float)
 @ti.data_oriented
 class Camera:
     pixels: ti.Vector.field
-    def __init__(self):
-        self.image_width = 800
-        self.image_height = 450
+    def __init__(
+            self,
+            samples_per_pixel: int,
+            image_width: int,
+            image_height: int,
+            focal_length: float,
+            view_height: float
+    ):
+        self.samples_per_pixel = samples_per_pixel
 
-        self.focal_length = 1.0
-        self.view_height = 2.0
+        self.image_width = image_width
+        self.image_height = image_height
+
+        self.focal_length = focal_length
+        self.view_height = view_height
+        
+        # ___________________________________________
+
         self.view_width = self.view_height * (self.image_width / self.image_height)
 
         # use ti.Vector outside @ti scope
@@ -96,6 +108,26 @@ class Camera:
             color = (1 - a) * vec3(1, 1, 1) + a * vec3(0.5, 0.7, 1.0)
 
         return color
+    
+    @ti.func
+    def get_ray(
+        self,
+        i: int,
+        j: int,
+
+        position: vec3,
+        init_pixel_loc: vec3,
+        pixel_delta_u: vec3,
+        pixel_delta_v: vec3,
+    ) -> Ray:
+        offset = sample_square()
+        pixel_center = init_pixel_loc + \
+            ((i + offset[0]) * pixel_delta_u) + \
+            ((j + offset[1]) * pixel_delta_v)
+        
+        ray_dir = pixel_center - position
+
+        return Ray(position, ray_dir)
 
     # kernel treats globals as constants
     # so we pass any live params as args through render()
@@ -110,10 +142,15 @@ class Camera:
         pixel_delta_v: vec3,
     ):
         for i, j in self.pixels:
-            pixel_center = init_pixel_loc + (i * pixel_delta_u) + (j * pixel_delta_v)
-            ray_dir = pixel_center - position
-            ray = Ray(position, ray_dir)
-            self.pixels[i, j] = self.ray_color(ray, world)
+            self.pixels[i,j] = vec3(0, 0, 0)
+
+            for sample in range(self.samples_per_pixel):
+                ray = self.get_ray(
+                    i, j,
+                    position, init_pixel_loc,
+                    pixel_delta_u, pixel_delta_v
+                )
+                self.pixels[i, j] += self.ray_color(ray, world) * (1 / self.samples_per_pixel)
     
     def render(
         self,

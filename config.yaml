@@ -1,0 +1,8 @@
+camera:
+  samples: 100
+
+  image_width: 800
+  image_height: 450
+
+  focal_length: 1.0
+  view_height: 2.0

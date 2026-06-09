@@ -1,5 +1,6 @@
 import taichi as ti
 
+
 vec3 = ti.types.vector(3, float)
 
 @ti.dataclass
@@ -28,6 +29,22 @@ class Interval:
     @ti.func
     def surrounds(self, x: float) -> bool:
         return self.min < x and x < self.max
+
+    @ti.func
+    def clamp(self, x: float) -> float:
+        result = x
+        if (x < self.min): result = self.min
+        if (self.max < x): result = self.max
+        return result
+
+
+@ti.func
+def sample_square():
+    return vec3(
+        ti.random(dtype=float) - 0.5, 
+        ti.random(dtype=float) - 0.5, 
+        0.0
+    )
 
 
 def rotate_about_z(vec: vec3, angle: float) -> vec3:
