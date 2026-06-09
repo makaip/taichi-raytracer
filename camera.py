@@ -1,3 +1,6 @@
+import taichi as ti
+import taichi.math as tm
+
 from hittable import *
 from utils import rotate_about_y, rotate_about_z
 
@@ -12,7 +15,9 @@ class Camera:
             image_width: int,
             image_height: int,
             focal_length: float,
-            view_height: float
+            view_height: float,
+            max_depth: int,
+            gamma: float
     ):
         self.samples_per_pixel = samples_per_pixel
 
@@ -21,6 +26,10 @@ class Camera:
 
         self.focal_length = focal_length
         self.view_height = view_height
+
+        self.max_depth = max_depth
+    
+        self.gamma = gamma
         
         # ___________________________________________
 
@@ -95,17 +104,28 @@ class Camera:
     def ray_color(
             self,
             ray: Ray,
+            depth: int,
             world: ti.template()
     ) -> vec3:
-        is_hit, rec = world.hit(ray, Interval(0, ti.math.inf))
-        color = vec3(0, 0, 0)
+        color = vec3(0.0, 0.0, 0.0)
+        attenuation = vec3(1.0, 1.0, 1.0)
+        current_ray = ray
+        brightness = 0.5
 
-        if is_hit:
-            color = 0.5 * (rec.normal + vec3(1, 1, 1))
-        else:
-            unit_direction = ray.direction.normalized()
-            a = 0.5 * (unit_direction[1] + 1.0)
-            color = (1 - a) * vec3(1, 1, 1) + a * vec3(0.5, 0.7, 1.0)
+        for _ in range(depth):
+            is_hit, rec = world.hit(current_ray, Interval(0.001, tm.inf))
+
+            if is_hit:
+                direction = random_on_hemi(rec.normal)
+                current_ray = Ray(rec.p, direction)
+                attenuation *= 1 - brightness
+            else:
+                unit_direction = current_ray.direction.normalized()
+                a = 0.5 * (unit_direction[1] + 1.0)
+                bg_color = (1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0)
+
+                color = attenuation * bg_color
+                break
 
         return color
     
@@ -150,7 +170,10 @@ class Camera:
                     position, init_pixel_loc,
                     pixel_delta_u, pixel_delta_v
                 )
-                self.pixels[i, j] += self.ray_color(ray, world) * (1 / self.samples_per_pixel)
+                self.pixels[i, j] += self.ray_color(ray, self.max_depth, world) * (1 / self.samples_per_pixel)
+            
+            self.pixels[i, j] = tm.clamp(self.pixels[i, j], 0, 1)
+            self.pixels[i, j] = self.pixels[i, j] ** (1.0 / self.gamma)
     
     def render(
         self,

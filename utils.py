@@ -1,4 +1,5 @@
 import taichi as ti
+import taichi.math as tm
 
 
 vec3 = ti.types.vector(3, float)
@@ -47,9 +48,40 @@ def sample_square():
     )
 
 
+@ti.func
+def random_vector(
+    r_min: float = 0.0,
+    r_max: float = 1.0
+):
+    return vec3(
+        (ti.random(dtype=float) * (r_max - r_min)) + r_min,
+        (ti.random(dtype=float) * (r_max - r_min)) + r_min,
+        (ti.random(dtype=float) * (r_max - r_min)) + r_min
+    )
+
+
+@ti.func
+def random_on_hemi(normal: vec3):
+    on_unit_sphere = random_vector(-1.0, 1.0).normalized()
+    result = -on_unit_sphere
+
+    if tm.dot(on_unit_sphere, normal) > 0.0:
+        result = on_unit_sphere
+    
+    return result
+
+@ti.func
+def linear_to_gamma(lin_comp):
+    result = 0
+    
+    if lin_comp > 0:
+        result =  tm.sqrt(lin_comp)
+
+    return result
+
 def rotate_about_z(vec: vec3, angle: float) -> vec3:
-    c, s = ti.math.cos(angle), ti.math.sin(angle)
-    rot_matrix = ti.math.mat3([
+    c, s = tm.cos(angle), tm.sin(angle)
+    rot_matrix = tm.mat3([
         [c,  -s,   0.0],
         [s,   c,   0.0],
         [0.0, 0.0, 1.0]
@@ -59,8 +91,8 @@ def rotate_about_z(vec: vec3, angle: float) -> vec3:
 
 
 def rotate_about_y(vec: vec3, angle: float) -> vec3:
-    c, s = ti.math.cos(angle), ti.math.sin(angle)
-    rot_matrix = ti.math.mat3([
+    c, s = tm.cos(angle), tm.sin(angle)
+    rot_matrix = tm.mat3([
         [c,   0.0, s],
         [0.0, 1.0, 0.0],
         [-s,  0.0, c]
@@ -69,5 +101,5 @@ def rotate_about_y(vec: vec3, angle: float) -> vec3:
     return rot_matrix @ vec
 
 
-empty_interval = Interval(ti.math.inf, -ti.math.inf)
-universe_interval = Interval(-ti.math.inf, ti.math.inf)
+empty_interval = Interval(tm.inf, -tm.inf)
+universe_interval = Interval(-tm.inf, tm.inf)

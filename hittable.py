@@ -1,6 +1,6 @@
-
-from abc import abstractmethod
 import taichi as ti
+import taichi.math as tm
+
 import numpy as np
 
 from utils import *
@@ -16,7 +16,7 @@ class HitRecord:
 
     @ti.func
     def set_face_normal(self, ray: Ray, outward_normal: vec3):
-        self.front_face = ti.math.dot(ray.direction, outward_normal) < 0
+        self.front_face = tm.dot(ray.direction, outward_normal) < 0
         if self.front_face:
             self.normal = outward_normal
         else:
@@ -86,7 +86,7 @@ class Sphere():
         oc = self.center - ray.origin
 
         a = ray.direction.norm_sqr()
-        h = ti.math.dot(ray.direction, oc)
+        h = tm.dot(ray.direction, oc)
         c = oc.norm_sqr() - (self.radius ** 2)
 
         disc = (h ** 2) - (a * c)

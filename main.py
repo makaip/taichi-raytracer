@@ -23,7 +23,9 @@ def main():
         config["camera"]["image_width"],
         config["camera"]["image_height"],
         config["camera"]["focal_length"],
-        config["camera"]["view_height"]
+        config["camera"]["view_height"],
+        config["camera"]["max_depth"],
+        config["camera"]["gamma"]
     )
 
     world = HittableList(max_objects=100)

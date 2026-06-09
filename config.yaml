@@ -6,3 +6,6 @@ camera:
 
   focal_length: 1.0
   view_height: 2.0
+
+  max_depth: 50
+  gamma: 2
