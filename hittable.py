@@ -71,6 +71,7 @@ class HittableList():
 
         return hit, final_rec
 
+
 # hittable
 @ti.dataclass
 class Sphere():

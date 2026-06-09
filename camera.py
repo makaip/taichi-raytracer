@@ -1,3 +1,6 @@
+import math
+import numpy as np
+
 import taichi as ti
 import taichi.math as tm
 
@@ -9,13 +12,13 @@ vec3 = ti.types.vector(3, float)
 @ti.data_oriented
 class Camera:
     pixels: ti.Vector.field
+
     def __init__(
             self,
             samples_per_pixel: int,
             image_width: int,
             image_height: int,
-            focal_length: float,
-            view_height: float,
+            vfov: float,
             max_depth: int,
             gamma: float
     ):
@@ -24,32 +27,30 @@ class Camera:
         self.image_width = image_width
         self.image_height = image_height
 
-        self.focal_length = focal_length
-        self.view_height = view_height
+        self.vfov = vfov
 
         self.max_depth = max_depth
     
         self.gamma = gamma
-        
-        # ___________________________________________
-
-        self.view_width = self.view_height * (self.image_width / self.image_height)
+        self.focal_length = 1.0
 
         # use ti.Vector outside @ti scope
+        self.vup = ti.Vector([0.0, 1.0, 0.0])
+
         self.position = ti.Vector([0.0, 0.0, 0.0])
+        self.rotation = ti.Vector([0.0, 0.0, 1.0])      # camera normal (facing fowards)
 
-        self.view_u = ti.Vector([self.view_width, 0.0, 0.0])
-        self.view_v = ti.Vector([0.0, self.view_height, 0.0])
+        # ___________________________________________
 
-        self.pixel_delta_u = self.view_u / self.image_width
-        self.pixel_delta_v = self.view_v / self.image_height
+        theta = math.radians(vfov)
+        h = math.tan(theta / 2)
+        self.view_height = 2 * h * self.focal_length
+        self.view_width = self.view_height * (self.image_width / self.image_height)
 
-        self.view_upper_left = self.position - \
-            ti.Vector([0.0, 0.0, self.focal_length]) - \
-            (self.view_u / 2.0) - (self.view_v / 2.0)
-            
-        self.init_pixel_loc = self.view_upper_left + \
-            0.5 * (self.pixel_delta_u + self.pixel_delta_v)
+        self.yaw = 0.0
+        self.pitch = 0.0
+
+        self.update_view()
             
         self.pixels = ti.Vector.field(
             n=3,
@@ -60,45 +61,57 @@ class Camera:
             )
         )
     
-    def handle_motion(self, gui: ti.GUI):
-        # navigation
-        if gui.is_pressed('w'):
-            self.position[2] -= 0.05
-        if gui.is_pressed('s'):
-            self.position[2] += 0.05
-        if gui.is_pressed('a'):
-            self.position[0] -= 0.05
-        if gui.is_pressed('d'):
-            self.position[0] += 0.05
-        if gui.is_pressed('q'):
-            self.position[1] -= 0.05
-        if gui.is_pressed('e'):
-            self.position[1] += 0.05
-        
-        # rotation - broken rn fix later idk
-        # if gui.is_pressed(ti.GUI.LEFT):
-        #     self.view_u = rotate_about_y(self.view_u, 0.05)
-        #     self.view_v = rotate_about_y(self.view_v, 0.05)
-        # if gui.is_pressed(ti.GUI.RIGHT):
-        #     self.view_u = rotate_about_y(self.view_u, -0.05)
-        #     self.view_v = rotate_about_y(self.view_v, -0.05)
-        # if gui.is_pressed(ti.GUI.UP):
-        #     self.view_u = rotate_about_z(self.view_u, 0.05)
-        #     self.view_v = rotate_about_z(self.view_v, 0.05)
-        # if gui.is_pressed(ti.GUI.DOWN):
-        #     self.view_u = rotate_about_z(self.view_u, -0.05)
-        #     self.view_v = rotate_about_z(self.view_v, -0.05)
-        
-        # update view params
+    def update_view(self):
+        self.rotation = ti.Vector([
+            math.sin(self.yaw) * math.cos(self.pitch),
+            math.sin(self.pitch),
+            -math.cos(self.yaw) * math.cos(self.pitch)
+        ]).normalized()
+
+        self.yaw_basis = self.vup.cross(self.rotation).normalized()
+        self.pitch_basis = self.rotation.cross(self.yaw_basis).normalized()
+
+        self.view_u = self.view_width * self.yaw_basis
+        self.view_v = self.view_height * self.pitch_basis
+
         self.pixel_delta_u = self.view_u / self.image_width
         self.pixel_delta_v = self.view_v / self.image_height
 
         self.view_upper_left = self.position - \
-            ti.Vector([0.0, 0.0, self.focal_length]) - \
+            (self.focal_length * self.rotation) - \
             (self.view_u / 2.0) - (self.view_v / 2.0)
             
         self.init_pixel_loc = self.view_upper_left + \
             0.5 * (self.pixel_delta_u + self.pixel_delta_v)
+    
+    def handle_motion(self, gui: ti.GUI):
+        # navigation
+        if gui.is_pressed('w'):
+            self.position[2] += 0.1
+        if gui.is_pressed('s'):
+            self.position[2] -= 0.1
+        if gui.is_pressed('a'):
+            self.position[0] += 0.1
+        if gui.is_pressed('d'):
+            self.position[0] -= 0.1
+        if gui.is_pressed('e'):
+            self.position[1] += 0.1
+        if gui.is_pressed('q'):
+            self.position[1] -= 0.1
+        
+        # rotation
+        if gui.is_pressed(ti.GUI.LEFT):
+            self.yaw -= 0.05
+        if gui.is_pressed(ti.GUI.RIGHT):
+            self.yaw += 0.05
+        if gui.is_pressed(ti.GUI.UP):
+            self.pitch += 0.05
+            self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
+        if gui.is_pressed(ti.GUI.DOWN):
+            self.pitch -= 0.05
+            self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
+        
+        self.update_view()
 
     @ti.func
     def ray_color(

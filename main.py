@@ -22,8 +22,7 @@ def main():
         config["camera"]["samples"],
         config["camera"]["image_width"],
         config["camera"]["image_height"],
-        config["camera"]["focal_length"],
-        config["camera"]["view_height"],
+        config["camera"]["vfov"],
         config["camera"]["max_depth"],
         config["camera"]["gamma"]
     )
@@ -32,7 +31,7 @@ def main():
     world.add(Sphere(center=ti.Vector([0.0, 0.0, -1.0]), radius=0.5))
     world.add(Sphere(center=ti.Vector([0.0, -100.5, -1.0]), radius=100.0))
     
-    live = False
+    live = True
 
     if live:
         gui = ti.GUI(

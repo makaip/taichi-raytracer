@@ -4,8 +4,7 @@ camera:
   image_width: 800
   image_height: 450
 
-  focal_length: 1.0
-  view_height: 2.0
+  vfov: 80
 
   max_depth: 50
   gamma: 2
