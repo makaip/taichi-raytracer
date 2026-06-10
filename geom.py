@@ -10,15 +10,14 @@ vec3 = ti.types.vector(3, float)
 
 @ti.func
 def mobius_add(
-    x: vec3,
-    y: vec3,
-    k: float
+    x: vec3,    # first point
+    y: vec3,    # second point
+    k: float    # curvature
 ) -> vec3:
     """
     mobius addition. lowk just yoinked from this ML library:
     https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#mobius_add
     """
-
     x2 = x.dot(x)
     y2 = y.dot(y)
     xy = x.dot(y)
@@ -28,8 +27,32 @@ def mobius_add(
     
     return num / tm.clamp(denom, xmax=1e-15)
 
+@ti.func
+def exp_map(
+    p: vec3,    # origin point
+    v: vec3,    # direction to shoot
+    k: float    # curvature
+) -> vec3:
+    """
+    exponential map
+    https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#expmap
+    https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#tan_k
+    https://math.stackexchange.com/questions/3766220/what-is-exponential-map-in-differential-geometry
+    """
+    v_norm = v.norm()
 
-# https://proceedings.neurips.cc/paper_files/paper/2018/file/dbab2adc8f9d078009ee3fa810bea142-Paper.pdf
-# https://math.stackexchange.com/questions/3766220/what-is-exponential-map-in-differential-geometry
-# https://www.math.uni-hamburg.de/home/lindemann/material/DG2020L17_slides.pdf
-# http://staff.ustc.edu.cn/~wangzuoq/Courses/16S-RiemGeom/Notes/Lec13.pdf
+    if v_norm < 1e-7:
+        return p
+    if ti.abs(k) < 1e-6:
+        return p + v
+    
+    sqrt_k = ti.sqrt(ti.abs(k))
+
+    if k < 0.0:
+        t = ti.tanh(sqrt_k * v_norm * 0.5) / sqrt_k
+    else:
+        t = ti.tan(sqrt_k * v_norm * 0.5) / sqrt_k
+    
+    y = mobius_add(p, t * v / v_norm, k)
+    return y
+
