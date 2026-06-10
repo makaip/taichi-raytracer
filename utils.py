@@ -80,6 +80,11 @@ def linear_to_gamma(lin_comp):
     return result
 
 
+@ti.func
+def arctanh(x: float) -> float:
+    return 0.5 * tm.log((1.0 + x) / (1.0 - x))
+
+
 def rotate_about_z(vec: vec3, angle: float) -> vec3:
     c, s = tm.cos(angle), tm.sin(angle)
     rot_matrix = tm.mat3([

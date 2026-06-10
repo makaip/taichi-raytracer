@@ -3,6 +3,8 @@ import taichi.math as tm
 
 import numpy as np
 
+from utils import arctanh
+
 vec3 = ti.types.vector(3, float)
 
 # https://geoopt.readthedocs.io/en/latest/extended/stereographic.html
@@ -27,6 +29,7 @@ def mobius_add(
     
     return num / tm.clamp(denom, xmax=1e-15)
 
+
 @ti.func
 def exp_map(
     p: vec3,    # origin point
@@ -39,6 +42,7 @@ def exp_map(
     https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#tan_k
     https://math.stackexchange.com/questions/3766220/what-is-exponential-map-in-differential-geometry
     """
+
     v_norm = v.norm()
 
     if v_norm < 1e-7:
@@ -56,3 +60,45 @@ def exp_map(
     y = mobius_add(p, t * v / v_norm, k)
     return y
 
+
+@ti.func
+def log_map(
+    p: vec3,    # origin point
+    q: vec3,    # direction to point
+    k: float    # curvature
+) -> vec3:
+    """
+    tangent vector at p pointing toward q
+    https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#logmap
+    https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#lambda_x
+    """
+
+    minus_p = -p
+    diff = mobius_add(minus_p, q, k)
+    d = diff.norm()
+
+    if d < 1e-7:
+        return vec3(0.0)
+    
+    sqrt_k = ti.sqrt(ti.abs(k))
+
+    if k < 0.0:
+        # custom taichi atanh implementation bc tm doesent have it
+        s = (2.0 / sqrt_k) * arctanh(sqrt_k * d)
+    else:
+        s = (2.0 / sqrt_k) * tm.atan2(sqrt_k * d, 1.0)
+    
+    return s * diff / d
+
+
+@ti.func
+def geodesic_dist(
+    p: vec3,    # point on manifold
+    q: vec3,    # point on manifold
+    k: float    # curvature
+) -> float:
+    """
+    returns geodesic distance
+    https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#dist
+    """
+    return log_map(p, q, k).norm()
