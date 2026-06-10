@@ -101,4 +101,27 @@ def geodesic_dist(
     returns geodesic distance
     https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#dist
     """
+
     return log_map(p, q, k).norm()
+
+
+@ti.func
+def geodesic_accel(
+    p: vec3,    # point
+    v: vec3,    # velocity
+    k: float    # curvature
+) -> vec3:
+    """
+    closed-form geodesic acceleration for the k-stereographic model
+    dv / dt = -2(kappa) * (<p, v> v - <v, v> p) / (conformal factor)^2
+    where conformal factor (lambda) = 1 / (1 + k (||p||)^2)
+    https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#lambda_x
+    https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#inner
+    """
+
+    pp = p.dot(p)
+    pv = p.dot(v)
+    vv = v.dot(v)
+    lam = 1.0 / (1.0 + k * pp)
+    return -2.0 * k * lam * lam * (pv * v - vv * p)
+
