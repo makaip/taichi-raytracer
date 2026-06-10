@@ -4,6 +4,7 @@ import taichi.math as tm
 import numpy as np
 
 from utils import *
+from ray import *
 
 vec3 = ti.types.vector(3, float)
 
@@ -110,4 +111,3 @@ class Sphere():
                 rec.set_face_normal(ray, outward_normal)
 
         return is_hit, rec
-
