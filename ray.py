@@ -1,11 +1,17 @@
 import taichi as ti
 import taichi.math as tm
 
+import yaml
+
 from geom import *
 
 vec3 = ti.types.vector(3, float)
 
-MAX_STEPS = 100
+config = None
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+MAX_STEPS = config["marching"]["max_steps"]
 
 @ti.dataclass
 class Ray:

@@ -28,8 +28,10 @@ def main():
     )
 
     world = HittableList(max_objects=100)
+    
     world.add(Sphere(center=ti.Vector([0.0, 0.0, -1.0]), radius=0.5))
-    world.add(Sphere(center=ti.Vector([0.0, -100.5, -1.0]), radius=100.0))
+    world.add(Sphere(center=ti.Vector([1.0, 1.0, -1.0]), radius=0.25))
+    world.add(Sphere(center=ti.Vector([0.0, -5.5, -1.0]), radius=5.0))
     
     live = True
 

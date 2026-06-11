@@ -114,10 +114,12 @@ class Camera:
             self.pitch += 0.05
             self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
 
-        if gui.is_pressed('['):
-            self.kappa -= 0.1
-        if gui.is_pressed(']'):
-            self.kappa += 0.1
+        if gui.is_pressed('o'):
+            self.kappa -= 0.005
+            print(f"{self.kappa}\r")
+        if gui.is_pressed('p'):
+            self.kappa += 0.005
+            print(f"{self.kappa}\r")
         
         self.update_view()
 

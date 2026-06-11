@@ -7,8 +7,15 @@ from utils import *
 from ray import *
 from geom import *
 
-HIT_EPS = 1e-3
-MAX_DIST = 100
+import yaml
+
+config = None
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+HIT_EPS = config["marching"]["hit_eps"]
+STEP_SIZE = config["marching"]["step_size"]
+MAX_DIST = config["marching"]["max_distance"]
 
 vec3 = ti.types.vector(3, float)
 
@@ -112,12 +119,11 @@ class Sphere():
             if t > MAX_DIST:
                 break
             
-            step = dist * 0.5
+            step = dist * STEP_SIZE
             p, v = rk4_step(p, v, step, k)
             t += step
         
         return hit, rec
-
 
     @ti.func
     def sdf(

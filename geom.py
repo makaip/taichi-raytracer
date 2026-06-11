@@ -45,25 +45,23 @@ def exp_map(
 
     v_norm = v.norm()
     
-    result = vec3(0,0,0)
+    result = p
 
-    if v_norm < 1e-7:
-        result = p
-    
-    if ti.abs(k) < 1e-6:
-        result = p + v
-    else:
-        sqrt_k = ti.sqrt(ti.abs(k))
-
-        t = 0
-        if k < 0.0:
-            t = ti.tanh(sqrt_k * v_norm * 0.5) / sqrt_k
+    if v_norm >= 1e-7:
+        if ti.abs(k) < 1e-6:
+            result = mobius_add(p, v, k)
         else:
-            t = ti.tan(sqrt_k * v_norm * 0.5) / sqrt_k
+            sqrt_k = ti.sqrt(ti.abs(k))
+
+            t = 0
+            if k < 0.0:
+                t = ti.tanh(sqrt_k * v_norm * 0.5) / sqrt_k
+            else:
+                t = ti.tan(sqrt_k * v_norm * 0.5) / sqrt_k
+            
+            y = mobius_add(p, t * v / v_norm, k)
         
-        y = mobius_add(p, t * v / v_norm, k)
-    
-        result = y
+            result = y
 
     return result
 
@@ -83,10 +81,9 @@ def log_map(
     minus_p = -p
     diff = mobius_add(minus_p, q, k)
     d = diff.norm()
-
     result = vec3(0.0)
 
-    if not d < 1e-7:    
+    if d >= 1e-7:    
         if abs(k) < 1e-6:
             result = diff
         else:
