@@ -22,7 +22,7 @@ class Ray:
         pos = self.origin
 
         for _ in range(MAX_STEPS):
-            pos = exp_map(pos, self.direction * d, k)
+            pos = exp_map(pos, self.direction * t, k)
 
         return pos
 

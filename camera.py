@@ -121,7 +121,8 @@ class Camera:
             self,
             ray: Ray,
             depth: int,
-            world: ti.template()
+            world: ti.template(),
+            k: float
     ) -> vec3:
         color = vec3(0.0, 0.0, 0.0)
         attenuation = vec3(1.0, 1.0, 1.0)
@@ -129,7 +130,7 @@ class Camera:
         brightness = 0.5
 
         for _ in range(depth):
-            is_hit, rec = world.hit(current_ray, Interval(0.001, tm.inf))
+            is_hit, rec = world.hit(current_ray, Interval(0.001, tm.inf), k)
 
             if is_hit:
                 direction = random_on_hemi(rec.normal)
@@ -161,7 +162,7 @@ class Camera:
             ((i + offset[0]) * pixel_delta_u) + \
             ((j + offset[1]) * pixel_delta_v)
         
-        ray_dir = pixel_center - position
+        ray_dir = (pixel_center - position).normalized()
 
         return Ray(position, ray_dir)
 
@@ -176,6 +177,7 @@ class Camera:
         init_pixel_loc: vec3,
         pixel_delta_u: vec3,
         pixel_delta_v: vec3,
+        k: float
     ):
         for i, j in self.pixels:
             self.pixels[i,j] = vec3(0, 0, 0)
@@ -186,19 +188,21 @@ class Camera:
                     position, init_pixel_loc,
                     pixel_delta_u, pixel_delta_v
                 )
-                self.pixels[i, j] += self.ray_color(ray, self.max_depth, world) * (1 / self.samples_per_pixel)
+                self.pixels[i, j] += self.ray_color(ray, self.max_depth, world, k) * (1 / self.samples_per_pixel)
             
             self.pixels[i, j] = tm.clamp(self.pixels[i, j], 0, 1)
             self.pixels[i, j] = self.pixels[i, j] ** (1.0 / self.gamma)
     
     def render(
         self,
-        world: ti.template()
+        world: ti.template(),
+        k: float
     ):
         self.render_kernel(
             world,
             self.position,
             self.init_pixel_loc,
             self.pixel_delta_u,
-            self.pixel_delta_v
+            self.pixel_delta_v,
+            k
         )

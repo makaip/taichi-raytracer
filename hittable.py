@@ -5,6 +5,10 @@ import numpy as np
 
 from utils import *
 from ray import *
+from geom import *
+
+HIT_EPS = 1e-3
+MAX_DIST = 100
 
 vec3 = ti.types.vector(3, float)
 
@@ -50,7 +54,8 @@ class HittableList():
     def hit(
         self,
         ray: Ray,
-        ray_t: Interval
+        ray_t: Interval,
+        k: float
     ) -> tuple:
         hit = False
         closest = ray_t.max
@@ -63,7 +68,7 @@ class HittableList():
         )
 
         for i in range(self.count[None]):
-            is_hit, temp_rec = self.objects[i].hit(ray, Interval(ray_t.min, closest))
+            is_hit, temp_rec = self.objects[i].hit(ray, Interval(ray_t.min, closest), k)
 
             if is_hit:
                 hit = True
@@ -73,7 +78,7 @@ class HittableList():
         return hit, final_rec
 
 
-# hittable
+# https://typhomnt.github.io/teaching/ray_tracing/raymarching_intro/
 @ti.dataclass
 class Sphere():
     center: vec3
@@ -83,31 +88,57 @@ class Sphere():
     def hit(
         self,
         ray: Ray,
-        ray_t: Interval
+        ray_t: Interval,
+        k: float
     ) -> tuple:
-        oc = self.center - ray.origin
+        p = ray.origin
+        v = ray.direction.normalized()
+        t = 0.0
+        hit = False
 
-        a = ray.direction.norm_sqr()
-        h = tm.dot(ray.direction, oc)
-        c = oc.norm_sqr() - (self.radius ** 2)
+        rec = HitRecord(vec3(0), vec3(0), 0.0, False)
 
-        disc = (h ** 2) - (a * c)
+        for _ in range(MAX_STEPS):
+            dist = self.sdf(p, k)
+            if dist < HIT_EPS and ray_t.surounds(t):
+                hit = True
+                rec.t = t
+                rec.p = p
 
-        is_hit = False
-        rec = HitRecord(p=vec3(0), normal=vec3(0), t=0.0, front_face=False)
+                outward = self.normal(p, k)
+                rec.set_face_normal(ray, outward)
 
-        if disc >= 0:
-            sqrtd = ti.sqrt(disc)
-            root = (h - sqrtd) / a
+                break
+            
+            if t > MAX_DIST:
+                break
+            
+            p, v = rk4_step(p, v, dist * 0.8, k)
+            t += dist * 0.8
 
-            if not ray_t.surrounds(root):
-                root = (h + sqrtd) / a
 
-            if ray_t.surrounds(root):
-                is_hit = True
-                rec.t = root
-                rec.p = ray.at(rec.t)
-                outward_normal = (rec.p - self.center) / self.radius
-                rec.set_face_normal(ray, outward_normal)
+    @ti.func
+    def sdf(
+        self,
+        p: vec3,
+        k: float
+    ) -> float:
+        return geodesic_dist(p, self.center, k) - self.radius
 
-        return is_hit, rec
+    @ti.func
+    def sdf_grad(
+        self,
+        p: vec3,
+        k: float
+    ) -> vec3:
+        eps = 1e-3
+        
+        eps_x = vec3(eps, 0, 0)
+        eps_y = vec3(0, eps, 0)
+        eps_z = vec3(0, 0, eps)
+
+        norm_x = self.sdf(exp_map(p, eps_x, k))
+        norm_y = self.sdf(exp_map(p, eps_y, k))
+        norm_z = self.sdf(exp_map(p, eps_z, k))
+
+        return vec3(norm_x, norm_y, norm_z).normalized()
