@@ -18,13 +18,7 @@ class Ray:
         t: float, 
         k: float
     ):
-        t = 0
-        pos = self.origin
-
-        for _ in range(MAX_STEPS):
-            pos = exp_map(pos, self.direction * t, k)
-
-        return pos
+        return exp_map(self.origin, self.direction * t, k)
 
 
 @ti.dataclass

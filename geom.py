@@ -27,7 +27,7 @@ def mobius_add(
     num = (1.0 - 2.0 * k * xy - k * y2) * x + (1.0 + k * x2) * y
     denom = 1.0 - 2.0 * k * xy + k *k * x2 * y2
     
-    return num / tm.clamp(denom, xmin=-tm.inf, xmax=1e-15)
+    return num / (tm.sign(denom) * tm.max(abs(denom), 1e-15))
 
 
 @ti.func
@@ -87,16 +87,19 @@ def log_map(
     result = vec3(0.0)
 
     if not d < 1e-7:    
-        sqrt_k = ti.sqrt(ti.abs(k))
-
-        s = 0
-        if k < 0.0:
-            # custom taichi atanh implementation bc tm doesent have it
-            s = (2.0 / sqrt_k) * arctanh(sqrt_k * d)
+        if abs(k) < 1e-6:
+            result = diff
         else:
-            s = (2.0 / sqrt_k) * tm.atan2(sqrt_k * d, 1.0)
-        
-        result = s * diff / d
+            sqrt_k = ti.sqrt(ti.abs(k))
+
+            s = 0
+            if k < 0.0:
+                # custom taichi atanh implementation bc tm doesent have it
+                s = (2.0 / sqrt_k) * arctanh(sqrt_k * d)
+            else:
+                s = (2.0 / sqrt_k) * tm.atan2(sqrt_k * d, 1.0)
+            
+            result = s * diff / d
     
     return result
 

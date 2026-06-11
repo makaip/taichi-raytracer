@@ -112,8 +112,9 @@ class Sphere():
             if t > MAX_DIST:
                 break
             
-            p, v = rk4_step(p, v, dist * 0.8, k)
-            t += dist * 0.8
+            step = dist * 0.5
+            p, v = rk4_step(p, v, step, k)
+            t += step
         
         return hit, rec
 

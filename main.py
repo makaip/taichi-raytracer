@@ -49,7 +49,7 @@ def main():
             gui.set_image(camera.pixels)
             gui.show()
     else:
-        camera.render(world)
+        camera.render(world, camera.kappa)
         img = camera.pixels.to_numpy()
         img = img.transpose(1, 0, 2)
         img = np.flip(img, axis=0)

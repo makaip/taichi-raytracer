@@ -1,10 +1,10 @@
 camera:
-  samples: 4
+  samples: 10
 
   image_width: 800
   image_height: 450
 
   vfov: 80
 
-  max_depth: 4
+  max_depth: 3
   gamma: 2
