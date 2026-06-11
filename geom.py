@@ -27,7 +27,7 @@ def mobius_add(
     num = (1.0 - 2.0 * k * xy - k * y2) * x + (1.0 + k * x2) * y
     denom = 1.0 - 2.0 * k * xy + k *k * x2 * y2
     
-    return num / tm.clamp(denom, xmax=1e-15)
+    return num / tm.clamp(denom, xmin=-tm.inf, xmax=1e-15)
 
 
 @ti.func
@@ -44,21 +44,28 @@ def exp_map(
     """
 
     v_norm = v.norm()
+    
+    result = vec3(0,0,0)
 
     if v_norm < 1e-7:
-        return p
+        result = p
+    
     if ti.abs(k) < 1e-6:
-        return p + v
-    
-    sqrt_k = ti.sqrt(ti.abs(k))
-
-    if k < 0.0:
-        t = ti.tanh(sqrt_k * v_norm * 0.5) / sqrt_k
+        result = p + v
     else:
-        t = ti.tan(sqrt_k * v_norm * 0.5) / sqrt_k
+        sqrt_k = ti.sqrt(ti.abs(k))
+
+        t = 0
+        if k < 0.0:
+            t = ti.tanh(sqrt_k * v_norm * 0.5) / sqrt_k
+        else:
+            t = ti.tan(sqrt_k * v_norm * 0.5) / sqrt_k
+        
+        y = mobius_add(p, t * v / v_norm, k)
     
-    y = mobius_add(p, t * v / v_norm, k)
-    return y
+        result = y
+
+    return result
 
 
 @ti.func
@@ -77,18 +84,21 @@ def log_map(
     diff = mobius_add(minus_p, q, k)
     d = diff.norm()
 
-    if d < 1e-7:
-        return vec3(0.0)
-    
-    sqrt_k = ti.sqrt(ti.abs(k))
+    result = vec3(0.0)
 
-    if k < 0.0:
-        # custom taichi atanh implementation bc tm doesent have it
-        s = (2.0 / sqrt_k) * arctanh(sqrt_k * d)
-    else:
-        s = (2.0 / sqrt_k) * tm.atan2(sqrt_k * d, 1.0)
+    if not d < 1e-7:    
+        sqrt_k = ti.sqrt(ti.abs(k))
+
+        s = 0
+        if k < 0.0:
+            # custom taichi atanh implementation bc tm doesent have it
+            s = (2.0 / sqrt_k) * arctanh(sqrt_k * d)
+        else:
+            s = (2.0 / sqrt_k) * tm.atan2(sqrt_k * d, 1.0)
+        
+        result = s * diff / d
     
-    return s * diff / d
+    return result
 
 
 @ti.func

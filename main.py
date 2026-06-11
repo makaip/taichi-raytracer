@@ -45,7 +45,7 @@ def main():
                 break
 
             camera.handle_motion(gui)
-            camera.render(world)
+            camera.render(world, camera.kappa)
             gui.set_image(camera.pixels)
             gui.show()
     else:

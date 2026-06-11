@@ -113,6 +113,11 @@ class Camera:
         if gui.is_pressed(ti.GUI.DOWN):
             self.pitch += 0.05
             self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
+
+        if gui.is_pressed('['):
+            self.kappa -= 0.1
+        if gui.is_pressed(']'):
+            self.kappa += 0.1
         
         self.update_view()
 

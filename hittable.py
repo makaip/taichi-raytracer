@@ -100,14 +100,13 @@ class Sphere():
 
         for _ in range(MAX_STEPS):
             dist = self.sdf(p, k)
-            if dist < HIT_EPS and ray_t.surounds(t):
+            if dist < HIT_EPS and ray_t.surrounds(t):
                 hit = True
                 rec.t = t
                 rec.p = p
 
-                outward = self.normal(p, k)
+                outward = self.sdf_grad(p, k)
                 rec.set_face_normal(ray, outward)
-
                 break
             
             if t > MAX_DIST:
@@ -115,6 +114,8 @@ class Sphere():
             
             p, v = rk4_step(p, v, dist * 0.8, k)
             t += dist * 0.8
+        
+        return hit, rec
 
 
     @ti.func
@@ -137,8 +138,8 @@ class Sphere():
         eps_y = vec3(0, eps, 0)
         eps_z = vec3(0, 0, eps)
 
-        norm_x = self.sdf(exp_map(p, eps_x, k))
-        norm_y = self.sdf(exp_map(p, eps_y, k))
-        norm_z = self.sdf(exp_map(p, eps_z, k))
+        norm_x = self.sdf(exp_map(p,  eps_x, k), k) - self.sdf(exp_map(p, -eps_x, k), k)
+        norm_y = self.sdf(exp_map(p,  eps_y, k), k) - self.sdf(exp_map(p, -eps_y, k), k)
+        norm_z = self.sdf(exp_map(p,  eps_z, k), k) - self.sdf(exp_map(p, -eps_z, k), k)
 
         return vec3(norm_x, norm_y, norm_z).normalized()
