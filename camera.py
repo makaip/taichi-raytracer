@@ -23,6 +23,7 @@ class Camera:
             gamma: float
     ):
         self.speed = 0.1
+        self.kappa = 0
         
         self.samples_per_pixel = samples_per_pixel
 

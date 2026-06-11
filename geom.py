@@ -125,3 +125,38 @@ def geodesic_accel(
     lam = 1.0 / (1.0 + k * pp)
     return -2.0 * k * lam * lam * (pv * v - vv * p)
 
+
+
+@ti.func
+def rk4_step(p: vec3, v: vec3, h: float, k: float):
+    """
+    https://www.geeksforgeeks.org/dsa/runge-kutta-4th-order-method-solve-differential-equation/
+    https://lpsa.swarthmore.edu/NumInt/NumIntFourth.html
+    """
+    
+    dp1 = v;                dv1 = geodesic_accel(p, v, k)       # k1 derivative at given point
+
+    p2  = p + 0.5*h*dp1;     v2 = v + 0.5*h*dv1                 # midpoint from k1
+    dp2 = v2;               dv2 = geodesic_accel(p2, v2, k)     # k2 derivative at midpoint
+ 
+    p3  = p + 0.5*h*dp2;     v3 = v + 0.5*h*dv2                 # midpoint from k2
+    dp3 = v3;               dv3 = geodesic_accel(p3, v3, k)     # k3 derivative at midpoint
+
+    p4  = p + h*dp3;         v4 = v + h*dv3
+    dp4 = v4;               dv4 = geodesic_accel(p4, v4, k)     # endpoint estimate from k3
+
+    p_new = p + (h/6.0) * (dp1 + 2.0*dp2 + 2.0*dp3 + dp4)       # estimate of position(t_0 + h)
+    v_new = v + (h/6.0) * (dv1 + 2.0*dv2 + 2.0*dv3 + dv4)       # estimate of velocity(t_0 + h)
+
+    # preserve speed
+    v_new = v_new.normalized() * v.norm()
+
+    # handle hyperbolic geom bc coords become singular at r = 1 / sqrt(-k)
+    if k < -1e-6:
+        r_max = 0.99 / ti.sqrt(-k)
+        pn = p_new.norm()
+
+        if pn > r_max:
+            p_new = p_new * (r_max / pn)
+
+    return p_new, v_new
