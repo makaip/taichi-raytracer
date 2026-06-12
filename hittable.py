@@ -62,6 +62,7 @@ class HittableList():
         self,
         ray: Ray,
         ray_t: Interval,
+        cam_pos: vec3,
         k: float
     ) -> tuple:
         hit = False
@@ -75,7 +76,12 @@ class HittableList():
         )
 
         for i in range(self.count[None]):
-            is_hit, temp_rec = self.objects[i].hit(ray, Interval(ray_t.min, closest), k)
+            temp = Sphere(
+                center=mobius_add(-cam_pos, self.objects[i].center, k),
+                radius=self.objects[i].radius
+            )
+
+            is_hit, temp_rec = temp.hit(ray, Interval(ray_t.min, closest), k)
 
             if is_hit:
                 hit = True
@@ -102,7 +108,7 @@ class Sphere():
         hit = False
 
         rec = HitRecord(vec3(0), vec3(0), 0.0, False)
-        lam_origin = 2.0 / (1.0 + k * ray.origin.dot(ray.origin))
+        # lam_origin = 2.0 / (1.0 + k * ray.origin.dot(ray.origin))
 
         for _ in range(MAX_STEPS):
             p = ray.at(t, k)
@@ -119,7 +125,8 @@ class Sphere():
             if t > MAX_DIST:
                 break
             
-            t += (dist * STEP_SIZE) / lam_origin
+            lam_p = 2.0 / (1.0 + k * p.dot(p))
+            t += (dist * STEP_SIZE) / lam_p
         
         return hit, rec
 

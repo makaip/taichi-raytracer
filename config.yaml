@@ -1,12 +1,12 @@
 camera:
-  samples: 2
+  samples: 8
 
   image_width: 400
   image_height: 400
 
-  vfov: 89
+  vfov: 90
 
-  max_depth: 4
+  max_depth: 3
   gamma: 2
 
 marching:

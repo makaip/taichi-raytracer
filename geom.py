@@ -49,7 +49,7 @@ def exp_map(
 
     if v_norm >= 1e-7:
         if ti.abs(k) < 1e-6:
-            result = mobius_add(p, v, k)
+            result = p + v
         else:
             sqrt_k = ti.sqrt(ti.abs(k))
 
@@ -88,7 +88,7 @@ def log_map(
 
     if d >= 1e-7:    
         if abs(k) < 1e-6:
-            result = diff
+            result = q - p
         else:
             sqrt_k = ti.sqrt(ti.abs(k))
 
@@ -138,7 +138,7 @@ def geodesic_accel(
     pp = p.dot(p)
     pv = p.dot(v)
     vv = v.dot(v)
-    lam = 1.0 / (1.0 + k * pp)
+    lam = 2.0 / (1.0 + k * pp)
     return -2.0 * k * lam * lam * (pv * v - vv * p)
 
 

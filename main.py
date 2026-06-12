@@ -50,6 +50,8 @@ def main():
             camera.render(world, camera.kappa)
             gui.set_image(camera.pixels)
             gui.show()
+
+            print(f"  {camera.kappa} | <{camera.position}> | <{camera.rotation}>             ", end="\r")
     else:
         camera.render(world, camera.kappa)
         img = camera.pixels.to_numpy()

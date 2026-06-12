@@ -116,10 +116,8 @@ class Camera:
 
         if gui.is_pressed('o'):
             self.kappa -= 0.005
-            print(f"{self.kappa}\r")
         if gui.is_pressed('p'):
             self.kappa += 0.005
-            print(f"{self.kappa}\r")
         
         self.update_view()
 
@@ -129,6 +127,7 @@ class Camera:
             ray: Ray,
             depth: int,
             world: ti.template(),
+            cam_pos: vec3,
             k: float
     ) -> vec3:
         color = vec3(0.0, 0.0, 0.0)
@@ -137,7 +136,7 @@ class Camera:
         brightness = 0.5
 
         for _ in range(depth):
-            is_hit, rec = world.hit(current_ray, Interval(0.001, tm.inf), k)
+            is_hit, rec = world.hit(current_ray, Interval(0.001, tm.inf), cam_pos, k)
 
             if is_hit:
                 direction = random_on_hemi(rec.normal)
@@ -152,7 +151,7 @@ class Camera:
                 break
 
         return color
-    
+
     @ti.func
     def get_ray(
         self,
@@ -192,19 +191,19 @@ class Camera:
             for sample in range(self.samples_per_pixel):
                 ray = self.get_ray(
                     i, j,
-                    position, init_pixel_loc,
+                    vec3(0,0,0), init_pixel_loc,
                     pixel_delta_u, pixel_delta_v
                 )
-                self.pixels[i, j] += self.ray_color(ray, self.max_depth, world, k) * (1 / self.samples_per_pixel)
+                self.pixels[i, j] += self.ray_color(ray, self.max_depth, world, position, k) * (1 / self.samples_per_pixel)
             
             self.pixels[i, j] = tm.clamp(self.pixels[i, j], 0, 1)
             self.pixels[i, j] = self.pixels[i, j] ** (1.0 / self.gamma)
-    
+
     def render(
         self,
         world: ti.template(),
         k: float
-    ):
+    ):  
         self.render_kernel(
             world,
             self.position,
