@@ -98,20 +98,20 @@ class Sphere():
         ray_t: Interval,
         k: float
     ) -> tuple:
-        p = ray.origin
-        v = ray.direction.normalized()
         t = 0.0
         hit = False
 
         rec = HitRecord(vec3(0), vec3(0), 0.0, False)
+        lam_origin = 2.0 / (1.0 + k * ray.origin.dot(ray.origin))
 
         for _ in range(MAX_STEPS):
+            p = ray.at(t, k)
             dist = self.sdf(p, k)
+            
             if dist < HIT_EPS and ray_t.surrounds(t):
                 hit = True
                 rec.t = t
                 rec.p = p
-
                 outward = self.sdf_grad(p, k)
                 rec.set_face_normal(ray, outward)
                 break
@@ -119,9 +119,7 @@ class Sphere():
             if t > MAX_DIST:
                 break
             
-            step = dist * STEP_SIZE
-            p, v = rk4_step(p, v, step, k)
-            t += step
+            t += (dist * STEP_SIZE) / lam_origin
         
         return hit, rec
 

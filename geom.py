@@ -8,7 +8,7 @@ from utils import arctanh
 vec3 = ti.types.vector(3, float)
 
 # https://geoopt.readthedocs.io/en/latest/extended/stereographic.html
-
+# https://andbloch.github.io/K-Stereographic-Model/
 
 @ti.func
 def mobius_add(
@@ -25,7 +25,7 @@ def mobius_add(
     xy = x.dot(y)
 
     num = (1.0 - 2.0 * k * xy - k * y2) * x + (1.0 + k * x2) * y
-    denom = 1.0 - 2.0 * k * xy + k *k * x2 * y2
+    denom = 1.0 - 2.0 * k * xy + k * k * x2 * y2
     
     return num / (tm.sign(denom) * tm.max(abs(denom), 1e-15))
 
@@ -53,11 +53,14 @@ def exp_map(
         else:
             sqrt_k = ti.sqrt(ti.abs(k))
 
+            pp = p.dot(p)
+            lam = 1.0 / (1.0 + k * pp)
+
             t = 0
             if k < 0.0:
-                t = ti.tanh(sqrt_k * v_norm * 0.5) / sqrt_k
+                t = ti.tanh(sqrt_k * lam * v_norm * 0.5) / sqrt_k
             else:
-                t = ti.tan(sqrt_k * v_norm * 0.5) / sqrt_k
+                t = ti.tan(sqrt_k * lam * v_norm * 0.5) / sqrt_k
             
             y = mobius_add(p, t * v / v_norm, k)
         
@@ -89,12 +92,15 @@ def log_map(
         else:
             sqrt_k = ti.sqrt(ti.abs(k))
 
+            pp = p.dot(p)
+            lam = 1.0 / (1.0 + k * pp)
+
             s = 0
             if k < 0.0:
                 # custom taichi atanh implementation bc tm doesent have it
-                s = (2.0 / sqrt_k) * arctanh(sqrt_k * d)
+                s = 2.0 * (lam / sqrt_k) * arctanh(sqrt_k * d)
             else:
-                s = (2.0 / sqrt_k) * tm.atan2(sqrt_k * d, 1.0)
+                s = 2.0 * (lam / sqrt_k) * tm.atan2(sqrt_k * d, 1.0)
             
             result = s * diff / d
     
