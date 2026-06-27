@@ -2,6 +2,7 @@ import taichi as ti
 import taichi.math as tm
 
 from manifold import Manifold
+from globals import *
 
 vec3 = ti.types.vector(3, float)
 vec4 = ti.types.vector(4, float)
@@ -54,11 +55,11 @@ class Camera:
 
         for i in range(3):
             out[i] = R[i][0] * v.x + R[i][1] * v.y + R[i][2] * v.z
-        
+
         return out
 
     @ti.func
-    def init(self):
+    def init(self) -> None:
         th = self.fov * (tm.pi / 180)
         h = tm.tan(th / 2)
 
@@ -77,14 +78,52 @@ class Camera:
 
         vul = self.pos - bw - (vu / 2) - (vv / 2)
         self.p00 = vul + 0.5 * (pdu + pdv)
-    
-    def render(self, manifold, scene):
+
+    def render(self, manifold, scene) -> None:
         self.init()
         basis = manifold.basis(self.pos)
         g = manifold.metric_tensor(self.pos, basis)
 
-        # self.render_kernel(manifold, scene, g)
+        self.render_kernel(manifold, scene, g)
 
-    # @ti.kernel
-    # def render_kernel(self, manifold: Manifold, scene: list, g: mat3x4):
-        
+    @ti.kernel
+    def render_kernel(self, manifold: Manifold, scene: list, g: mat3x4) -> None:
+        for y in range(self.image_height):
+            for x in range(self.image_width):
+                col_r = 1; col_g = 1; col_b = 1
+
+                rpos = self.p00 + (x * self.pdu) + (y * self.pdv)
+                rdir = rpos - self.pos
+
+                mns = 0
+                for i in range(3):
+                    for j in range(3):
+                        mns += rdir[i] * g[i][j] * rdir[j]
+
+                scale = 1 / tm.sqrt(mns)
+                rdir *= scale
+
+                hit, norm, depth = self.march_ray(manifold, scene, rpos, rdir)
+                depth_col = MAX_DEPTH / ((4 * depth) + MAX_DEPTH)
+
+                if hit:
+                    col_r = tm.clamp((norm.x * 0.5 + 0.5) * 255 * depth_col, 0, 255)
+                    col_g = tm.clamp((norm.y * 0.5 + 0.5) * 255 * depth_col, 0, 255)
+                    col_b = tm.clamp((norm.z * 0.5 + 0.5) * 255 * depth_col, 0, 255)
+
+                pixels[x, y] = vec3(col_r, col_g, col_b)
+
+    @ti.func
+    def march_ray(self, manifold: Manifold, scene: list, rpos: vec3, rdir: vec3) -> list[bool, vec3, float]:
+        hit = False
+        norm = vec3(0)
+
+        tmp_pos = rpos
+        tmp_dir = rdir
+        steps = 0
+
+        while steps < MAX_DEPTH:
+            min_dist = HIT_DIST
+            closest_shape = None
+
+            for

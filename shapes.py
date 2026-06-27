@@ -9,5 +9,14 @@ class Plane:
     normal: vec4
     manifold: None
 
-    def __init__(self, origin: vec3, normal: vec3, manifold):
+    def __init__(self, origin: vec3, normal: vec3, manifold: Manifold):
+        self.manifold = manifold
+
+@ti.dataclass
+class Sphere:
+    origin: vec4
+    normal: vec4
+    manifold: None
+
+    def __init__(self, origin: vec3, normal: vec3, manifold: Manifold):
         self.manifold = manifold
