@@ -1,16 +1,5 @@
 camera:
-  samples: 8
-
   image_width: 400
   image_height: 400
 
   vfov: 90
-
-  max_depth: 3
-  gamma: 2
-
-marching:
-  hit_eps: 0.001
-  step_size: 0.5
-  max_distance: 5000
-  max_steps: 1000

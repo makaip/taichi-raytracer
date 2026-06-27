@@ -12,20 +12,20 @@ vec3 = ti.types.vector(3, float)
 
 @ti.func
 def mobius_add(
-    x: vec3,    # first point
-    y: vec3,    # second point
+    p: vec3,    # first point
+    q: vec3,    # second point
     k: float    # curvature
 ) -> vec3:
     """
     mobius addition. lowk just yoinked from this ML library:
     https://geoopt.readthedocs.io/en/latest/_modules/geoopt/manifolds/stereographic/math.html#mobius_add
     """
-    x2 = x.dot(x)
-    y2 = y.dot(y)
-    xy = x.dot(y)
+    p2 = p.dot(p)
+    q2 = q.dot(q)
+    pq = p.dot(q)
 
-    num = (1.0 - 2.0 * k * xy - k * y2) * x + (1.0 + k * x2) * y
-    denom = 1.0 - 2.0 * k * xy + k * k * x2 * y2
+    num = (1.0 - 2.0 * k * pq - k * q2) * p + (1.0 + k * p2) * q
+    denom = 1.0 - 2.0 * k * pq + k * k * p2 * q2
     
     return num / (tm.sign(denom) * tm.max(abs(denom), 1e-15))
 
