@@ -1,5 +1,5 @@
 camera:
-  image_width: 400
+  image_width: 640
   image_height: 400
 
   vfov: 90

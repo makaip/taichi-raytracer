@@ -7,9 +7,7 @@ import os
 from typing import TextIO
 
 from utils import *
-from hittable import *
 from camera import *
-
 
 def main():
     ti.init(arch=ti.gpu)
