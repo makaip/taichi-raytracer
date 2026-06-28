@@ -76,7 +76,7 @@ class Manifold:
     @ti.func
     def step(self, pos: vec3, vel: vec3, dt: float):
         J1 = self.basis(pos)
-        ru = J1[0]; rv = J1[1]; rw = J1[2]
+        ru = J1[0,:]; rv = J1[1,:]; rw = J1[2,:]
 
         pos4 = self.f(pos.x, pos.y, pos.z)
         vel4 = ru * vel.x + rv * vel.y + rw * vel.z
@@ -91,7 +91,7 @@ class Manifold:
         new_vel = vec3(0)
         for i in range(3):
             for j in range(3):
-                new_vel[i] += g_inv[i][j] * tm.dot(J2[j], vel4)
+                new_vel[i] += g_inv[i,j] * tm.dot(J2[j,:], vel4)
         
         return [new_pos, new_vel]
 

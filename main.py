@@ -10,50 +10,42 @@ from typing import TextIO
 from utils import *
 from camera import *
 from manifold import *
-from globals import *
-
-@ti.kernel
-def populate_scene(manifold: ti.template(), n: int):
-    for i in range(n):
-        p_r = 5
-        p = tm.vec3(
-            ti.random() * (2 * p_r) - p_r,
-            ti.random() * (2 * p_r) - p_r,
-            ti.random() * (2 * p_r) - p_r
-        )
-
-        origin_4d = manifold.f(p.x, p.y, p.z)
-        
-        scene[i] = Sphere(
-            origin=origin_4d,
-            radius=0.1
-        )
+from shapes import *
 
 def main():
+    ti.init(arch=ti.gpu)
+    
     config = None
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
-
+    
     camera = Camera(
-        vec3(0,0,0),
-        vec3(0,1,0),
-        IMAGE_WIDTH,
-        IMAGE_HEIGHT,
+        ti.Vector([0.0, 0.0, 0.0]),         # pos
+        0.0,                                # pitch
+        math.radians(180),                  # yaw
+        config["camera"]["image_width"],
+        config["camera"]["image_height"],
         config["camera"]["fov"]
     )
 
     manifold = Manifold(h=1e-4)
-    populate_scene(manifold, SCENE_SIZE)
-    camera.render(manifold)
+
+    scene = Scene(max_objects=100)
+
+    scene.add(Sphere(center=ti.Vector([0.0, 0.0, -1.0]), radius=0.5))
+    scene.add(Sphere(center=ti.Vector([1.0, 1.0, -1.0]), radius=0.25))
+    scene.add(Sphere(center=ti.Vector([0.0, -5.5, -1.0]), radius=5.0))
+
+    camera.render(manifold, scene)
     
     gui = ti.GUI(
         "Renderer", 
-        (IMAGE_WIDTH, IMAGE_HEIGHT), 
+        (camera.image_width, camera.image_height), 
         fast_gui=True
     )
 
     while gui.running:
-        gui.set_image(pixels)
+        gui.set_image(camera.pixels)
         gui.show()
 
 

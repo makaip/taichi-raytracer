@@ -1,8 +1,8 @@
 import taichi as ti
 import taichi.math as tm
+import math
 
 from manifold import Manifold
-from globals import scene, pixels, IMAGE_WIDTH, IMAGE_HEIGHT
 
 vec3 = ti.types.vector(3, float)
 vec4 = ti.types.vector(4, float)
@@ -15,112 +15,100 @@ HIT_DIST = 1e-2
 MAX_DEPTH = 500
 
 
-@ti.dataclass
-class Ray:
-    pos: vec3
-    dir: vec3
-
-
 @ti.data_oriented
 class Camera:
-    pos: vec3
-    rot: vec3
+    pixels: ti.Vector.field
 
-    image_width: int
-    image_height: int
-
-    fov: float
-
-    p00: vec3
-    pdu: vec3
-    pdv: vec3
-
-    dfu: vec3
-    dfv: vec3
-    dfw: vec3
-
-    def __init__(self, pos: vec3, rot: vec3, image_width: int, image_height: int, fov: float):
+    def __init__(self, pos: vec3, pitch: float, yaw: float, image_width: int, image_height: int, fov: float):
         self.pos = pos
-        self.rot = rot
+        self.rot = ti.Vector([0.0, 0.0, 0.0])
+
+        self.pitch = pitch
+        self.yaw = yaw
 
         self.image_width = image_width
         self.image_height = image_height
         self.fov = fov
 
-    def rotate(self, v: vec3) -> vec3:
-        cx = tm.cos(self.rot.x); sx = tm.sin(self.rot.x)
-        cy = tm.cos(self.rot.y); sy = tm.sin(self.rot.y)
-        cz = tm.cos(self.rot.z); sz = tm.sin(self.rot.z)
+        self.vup = ti.Vector([0, 1, 0])
 
-        R = mat3(
-            cy * cz,   sx * sy * cz - cx * sz,     cx * sy * cz + sx * sz,
-            cy * sz,   sx * sy * sz + cx * cz,     cx * sy * sz - sx * cz,
-            sy,        sx * cy,                    cx * cy
+        th = self.fov * (math.pi / 180)
+        h = math.tan(th / 2)
+
+        self.vh = 2 * h
+        self.vw = self.vh * (self.image_width / self.image_height)
+
+        self.update()
+
+        self.pixels = ti.Vector.field(
+            n=3,
+            dtype=ti.f32,
+            shape=(self.image_width, self.image_height)
         )
 
-        return R @ v
+    def update(self):
+        self.rot = ti.Vector([
+            math.sin(self.yaw) * math.cos(self.pitch),
+            math.sin(self.pitch),
+            -math.cos(self.yaw) * math.cos(self.pitch)
+        ]).normalized()
 
+        self.yaw_basis = self.vup.cross(self.rot).normalized()
+        self.pitch_basis = self.rot.cross(self.yaw_basis).normalized()
 
-    def init(self):
-        self.dfu = vec3(1, 0, 0)
-        self.dfv = vec3(0, 1, 0)
-        self.dfw = vec3(0, 0, 1)
+        vu = self.vw * self.yaw_basis
+        vv = -self.vh * self.pitch_basis
 
-        th = self.fov * (tm.pi / 180)
-        h = tm.tan(th / 2)
+        self.pdu = vu / self.image_width
+        self.pdv = vv / self.image_height
 
-        vh = 2 * h
-        vw = vh * (self.image_width / self.image_height)
+        vul = self.pos - self.rot - (vu / 2) - (vv / 2)
+        self.p00 = vul + 0.5 * (self.pdu + self.pdv)
 
-        bu = self.rotate(self.dfu)
-        bv = self.rotate(self.dfv)
-        bw = self.rotate(self.dfw)
-
-        vu = vw * bu
-        vv = -vh * bv
-
-        pdu = vu / self.image_width
-        pdv = vv / self.image_height
-
-        vul = self.pos - bw - (vu / 2) - (vv / 2)
-        self.p00 = vul + 0.5 * (pdu + pdv)
-
-    def render(self, manifold):
-        self.init()
-        self.render_kernel(manifold)
+    def render(self, manifold, scene):
+        self.update()
+        self.render_kernel(manifold, scene, self.pos, self.p00, self.pdu, self.pdv)
 
     @ti.kernel
-    def render_kernel(self, manifold: ti.template()):
-        basis = manifold.basis(self.pos)
-        g = manifold.metric_tensor(self.pos, basis)
+    def render_kernel(
+        self, 
+        manifold: ti.template(),
+        scene: ti.template(),
 
-        for y in range(self.image_height):
-            for x in range(self.image_width):
-                col_r = 1; col_g = 1; col_b = 1
+        pos: vec3,
+        p00: vec3,
+        pdu: vec3,
+        pdv: vec3
+    ):
+        basis = manifold.basis(pos)
+        g = manifold.metric_tensor(pos, basis)
 
-                rpos = self.p00 + (x * self.pdu) + (y * self.pdv)
-                rdir = rpos - self.pos
+        for x, y in self.pixels:
+            col_r = 1; col_g = 1; col_b = 1
 
-                mns = 0
-                for i in range(3):
-                    for j in range(3):
-                        mns += rdir[i] * g[i][j] * rdir[j]
+            rpos = p00 + (x * pdu) + (y * pdv)
+            rdir = rpos - pos
 
-                scale = 1 / tm.sqrt(mns)
-                rdir *= scale
+            mns = 0.0
+            for i in range(3):
+                for j in range(3):
+                    mns += rdir[i] * g[i,j] * rdir[j]
 
-                hit, norm, depth = self.march_ray(manifold, rpos, rdir)
-                depth_col = MAX_DEPTH / ((4 * depth) + MAX_DEPTH)
+            scale = 1 / tm.sqrt(mns)
+            rdir *= scale
 
-                if hit:
-                    col_r = tm.clamp((norm.x * 0.5 + 0.5) * 255 * depth_col, 0, 255)
-                    col_g = tm.clamp((norm.y * 0.5 + 0.5) * 255 * depth_col, 0, 255)
-                    col_b = tm.clamp((norm.z * 0.5 + 0.5) * 255 * depth_col, 0, 255)
+            hit, norm, depth = self.march_ray(manifold, scene, rpos, rdir)
+            depth_col = MAX_DEPTH / ((4 * depth) + MAX_DEPTH)
 
-                pixels[x, y] = vec3(col_r, col_g, col_b)
+            if hit:
+                col_r = tm.clamp((norm.x * 0.5 + 0.5) * 255 * depth_col, 0, 255)
+                col_g = tm.clamp((norm.y * 0.5 + 0.5) * 255 * depth_col, 0, 255)
+                col_b = tm.clamp((norm.z * 0.5 + 0.5) * 255 * depth_col, 0, 255)
+
+            self.pixels[x, y] = vec3(col_r, col_g, col_b)
 
     @ti.func
-    def march_ray(self, manifold: ti.template(), rpos: vec3, rdir: vec3):
+    def march_ray(self, manifold: ti.template(), scene: ti.template(), rpos: vec3, rdir: vec3):
         hit = False
         norm = vec3(0)
 
@@ -132,8 +120,8 @@ class Camera:
             min_dist = HIT_DIST
             closest_idx = -1
 
-            for idx in range(scene.shape[0]):
-                dist = scene[idx].sdf(tmp_pos, manifold)
+            for idx in range(scene.count[None]):
+                dist = scene.objects[idx].sdf(tmp_pos, manifold)
 
                 if (dist < min_dist):
                     min_dist = dist
@@ -142,7 +130,7 @@ class Camera:
             if (min_dist < HIT_DIST):
                 basis = manifold.basis(tmp_pos)
                 g = manifold.metric_tensor(tmp_pos, basis)
-                norm = scene[closest_idx].sdf_normal(tmp_pos, tm.inverse(g))
+                norm = scene.objects[closest_idx].sdf_normal(tmp_pos, tm.inverse(g), manifold)
 
                 hit = True
                 break

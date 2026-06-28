@@ -8,6 +8,27 @@ vec4 = ti.types.vector(4, float)
 
 mat3 = ti.types.matrix(3, 3, float)
 
+@ti.data_oriented
+class Scene:
+    def __init__(self, max_objects=100):
+        self.objects = Sphere.field(shape=max_objects)
+        self.count = ti.field(
+            dtype=ti.i32,
+            shape=()
+        )
+        self.count[None] = 0
+
+    def clear(self):
+        self.count[None] = 0
+
+    def add(self, object):
+        idx = self.count[None]
+        if idx < self.objects.shape[0]:
+            self.objects[idx].origin = object.origin
+            self.objects[idx].radius = object.radius
+            self.count[None] += 1
+        else:
+            raise OverflowError("HittableList is full")
 
 @ti.dataclass
 class Sphere:
@@ -33,6 +54,6 @@ class Sphere:
         raised = vec3(0)
         for i in range(3):
             for j in range(3):
-                raised[i] += g_inv[i][j] * grad[j]
+                raised[i] += g_inv[i,j] * grad[j]
         
         return tm.normalize(raised)
