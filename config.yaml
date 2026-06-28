@@ -2,4 +2,4 @@ camera:
   image_width: 640
   image_height: 400
 
-  vfov: 90
+  fov: 90

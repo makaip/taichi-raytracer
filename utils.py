@@ -1,15 +1,19 @@
 import taichi as ti
 import taichi.math as tm
 
-
 vec3 = ti.types.vector(3, float)
-
-
 
 @ti.func
 def arctanh(x: float) -> float:
     return 0.5 * tm.log((1.0 + x) / (1.0 - x))
 
+@ti.func
+def ti_cosh(x):
+    return (ti.exp(x) + ti.exp(-x)) / 2.0
+
+@ti.func
+def ti_sinh(x):
+    return (ti.exp(x) - ti.exp(-x)) / 2.0
 
 def rotate_about_z(vec: vec3, angle: float) -> vec3:
     c, s = tm.cos(angle), tm.sin(angle)
