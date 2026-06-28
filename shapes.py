@@ -51,7 +51,7 @@ class Sphere:
 
         grad = tm.normalize(vec3(dx, dy, dz))
 
-        raised = vec3(0)
+        raised = vec3(0.0)
         for i in range(3):
             for j in range(3):
                 raised[i] += g_inv[i,j] * grad[j]

@@ -12,7 +12,7 @@ mat3x4 = ti.types.matrix(3, 4, float)
 
 STEP_SIZE = 1e-2
 HIT_DIST = 1e-2
-MAX_DEPTH = 500
+MAX_DEPTH = 1000
 
 
 @ti.data_oriented
@@ -22,6 +22,7 @@ class Camera:
     def __init__(self, pos: vec3, pitch: float, yaw: float, image_width: int, image_height: int, fov: float):
         self.pos = pos
         self.rot = ti.Vector([0.0, 0.0, 0.0])
+        self.speed = 0.1
 
         self.pitch = pitch
         self.yaw = yaw
@@ -30,7 +31,7 @@ class Camera:
         self.image_height = image_height
         self.fov = fov
 
-        self.vup = ti.Vector([0, 1, 0])
+        self.vup = ti.Vector([0.0, 1.0, 0.0])
 
         th = self.fov * (math.pi / 180)
         h = math.tan(th / 2)
@@ -84,7 +85,7 @@ class Camera:
         g = manifold.metric_tensor(pos, basis)
 
         for x, y in self.pixels:
-            col_r = 1; col_g = 1; col_b = 1
+            col_r = 0.0; col_g = 0.0; col_b = 0.0
 
             rpos = p00 + (x * pdu) + (y * pdv)
             rdir = rpos - pos
@@ -94,30 +95,32 @@ class Camera:
                 for j in range(3):
                     mns += rdir[i] * g[i,j] * rdir[j]
 
-            scale = 1 / tm.sqrt(mns)
+            scale = 1.0 / tm.sqrt(mns)
             rdir *= scale
 
             hit, norm, depth = self.march_ray(manifold, scene, rpos, rdir)
+            
+            depth_col = 1.0
             depth_col = MAX_DEPTH / ((4 * depth) + MAX_DEPTH)
 
             if hit:
-                col_r = tm.clamp((norm.x * 0.5 + 0.5) * 255 * depth_col, 0, 255)
-                col_g = tm.clamp((norm.y * 0.5 + 0.5) * 255 * depth_col, 0, 255)
-                col_b = tm.clamp((norm.z * 0.5 + 0.5) * 255 * depth_col, 0, 255)
+                col_r = tm.clamp((norm.x * 0.5 + 0.5) * depth_col, 0.0, 1.0)
+                col_g = tm.clamp((norm.y * 0.5 + 0.5) * depth_col, 0.0, 1.0)
+                col_b = tm.clamp((norm.z * 0.5 + 0.5) * depth_col, 0.0, 1.0)
 
             self.pixels[x, y] = vec3(col_r, col_g, col_b)
 
     @ti.func
     def march_ray(self, manifold: ti.template(), scene: ti.template(), rpos: vec3, rdir: vec3):
         hit = False
-        norm = vec3(0)
+        norm = vec3(0.0)
 
         tmp_pos = rpos
         tmp_dir = rdir
         steps = 0
 
         while steps < MAX_DEPTH:
-            min_dist = HIT_DIST
+            min_dist = 1e10
             closest_idx = -1
 
             for idx in range(scene.count[None]):
@@ -147,3 +150,33 @@ class Camera:
             steps += 1
         
         return hit, norm, steps
+
+    # TODO: handle rotation and position changes relative to manifold basis
+    def handle_motion(self, gui: ti.GUI):
+        # navigation
+        if gui.is_pressed('w'):
+            self.pos -= self.rot * self.speed
+        if gui.is_pressed('s'):
+            self.pos += self.rot * self.speed
+        if gui.is_pressed('a'):
+            self.pos -= self.yaw_basis * self.speed
+        if gui.is_pressed('d'):
+            self.pos += self.yaw_basis * self.speed
+        if gui.is_pressed('e'):
+            self.pos += self.vup * self.speed
+        if gui.is_pressed('q'):
+            self.pos -= self.vup * self.speed
+        
+        # rotation
+        if gui.is_pressed(ti.GUI.LEFT):
+            self.yaw -= 0.05
+        if gui.is_pressed(ti.GUI.RIGHT):
+            self.yaw += 0.05
+        if gui.is_pressed(ti.GUI.UP):
+            self.pitch -= 0.05
+            self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
+        if gui.is_pressed(ti.GUI.DOWN):
+            self.pitch += 0.05
+            self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
+        
+        self.update()

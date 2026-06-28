@@ -20,11 +20,32 @@ class Manifold:
     @ti.func
     def f(self, u: float, v: float, w: float) -> vec4:
         return vec4(
-            ti_cosh(u),
-            ti_sinh(u) * ti.cos(v),
-            ti_sinh(u) * ti.sin(v) * ti.cos(w),
-            ti_sinh(u) * ti.sin(v) * ti.sin(w),
+            u,
+            v,
+            w,
+            1
         )
+
+        # return vec4(
+        #     tm.sqrt(1.0 + u**2 + v**2 + w**2),
+        #     u,
+        #     v,
+        #     w
+        # )
+
+        # return vec4(
+        #     ti_cosh(u),
+        #     ti_sinh(u) * ti.cos(v),
+        #     ti_sinh(u) * ti.sin(v) * ti.cos(w),
+        #     ti_sinh(u) * ti.sin(v) * ti.sin(w),
+        # )
+
+        # return vec4(
+        #     ti.cos(u),
+        #     ti.sin(u) * ti.cos(v),
+        #     ti.sin(u) * ti.sin(v) * ti.cos(w),
+        #     ti.sin(u) * ti.sin(v) * ti.sin(w),
+        # )
 
     @ti.func
     def basis(self, pos: vec3) -> mat3x4:
@@ -40,7 +61,7 @@ class Manifold:
     
     @ti.func
     def metric_tensor(self, pos: vec3, basis: mat3x4) -> mat3:
-        g = mat3(0)
+        g = mat3(0.0)
         for i in range(3):
             for k in range(3):
                 for l in range(4):
@@ -61,7 +82,7 @@ class Manifold:
             if (tm.dot(res, res) < 1e-2):
                 break
             
-            Jtr = vec3(0)
+            Jtr = vec3(0.0)
 
             # dot prod
             for j in range(3):
@@ -88,7 +109,7 @@ class Manifold:
         g = self.metric_tensor(new_pos, J2)
         g_inv = tm.inverse(g)
 
-        new_vel = vec3(0)
+        new_vel = vec3(0.0)
         for i in range(3):
             for j in range(3):
                 new_vel[i] += g_inv[i,j] * tm.dot(J2[j,:], vel4)
