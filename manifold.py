@@ -70,7 +70,8 @@ class Manifold:
         
     @ti.func
     def proj_manifold(self, pos: vec3, target: vec4, iters: int = 10) -> vec3:
-        for i in range(iters):
+        i = 0
+        while i < iters:
             # jacobean "J" = matrix of bases
             J = self.basis(pos)
             g = self.metric_tensor(pos, J)
@@ -91,6 +92,8 @@ class Manifold:
 
             delta = g_inv @ (-Jtr)
             pos += delta
+            
+            i += 1
         
         return pos
 

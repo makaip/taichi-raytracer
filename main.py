@@ -23,7 +23,11 @@ def main():
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
     
+    manifold = Manifold(h=1e-4)
+    scene = Scene(max_objects=100)
+    
     camera = Camera(
+        manifold,
         ti.Vector([0.0, 0.0, 0.0]),         # pos
         0.0,                                # pitch
         math.radians(0),                    # yaw
@@ -31,9 +35,6 @@ def main():
         config["camera"]["image_height"],
         config["camera"]["fov"]
     )
-
-    manifold = Manifold(h=1e-4)
-    scene = Scene(max_objects=100)
     
     mf = lambda vec : manf(manifold, vec)
 
@@ -51,7 +52,7 @@ def main():
         if gui.get_event(ti.GUI.ESCAPE):
             break
 
-        camera.handle_motion(gui)
+        camera.handle_motion(gui, manifold)
         camera.render(manifold, scene)
         gui.set_image(camera.pixels)
         gui.show()

@@ -19,7 +19,7 @@ MAX_DEPTH = 1000
 class Camera:
     pixels: ti.Vector.field
 
-    def __init__(self, pos: vec3, pitch: float, yaw: float, image_width: int, image_height: int, fov: float):
+    def __init__(self, manifold: ti.template(), pos: vec3, pitch: float, yaw: float, image_width: int, image_height: int, fov: float):
         self.pos = pos
         self.rot = ti.Vector([0.0, 0.0, 0.0])
         self.speed = 0.1
@@ -39,7 +39,7 @@ class Camera:
         self.vh = 2 * h
         self.vw = self.vh * (self.image_width / self.image_height)
 
-        self.update()
+        self.update(manifold)
 
         self.pixels = ti.Vector.field(
             n=3,
@@ -47,15 +47,41 @@ class Camera:
             shape=(self.image_width, self.image_height)
         )
 
-    def update(self):
-        self.rot = ti.Vector([
-            math.sin(self.yaw) * math.cos(self.pitch),
-            math.sin(self.pitch),
-            -math.cos(self.yaw) * math.cos(self.pitch)
+    @ti.kernel
+    def compute_basis(self, manifold: ti.template(), pos: vec3, yaw: float, pitch: float) -> mat3:
+        fwd_i = ti.Vector([
+            tm.sin(yaw) * tm.cos(pitch),
+            tm.sin(pitch),
+            -tm.cos(yaw) * tm.cos(pitch)
         ]).normalized()
 
-        self.yaw_basis = self.vup.cross(self.rot).normalized()
-        self.pitch_basis = self.rot.cross(self.yaw_basis).normalized()
+        up_i = vec3(0.0, 1.0, 0.0)
+
+        basis = manifold.basis(pos)
+        g = manifold.metric_tensor(pos, basis)
+        g_inv = tm.inverse(g)
+
+        up_prj = tm.dot(fwd_i, g @ fwd_i)
+
+        fwd_l = tm.sqrt(up_prj)
+        fwd = fwd_i / fwd_l
+
+        up = up_i - up_prj * fwd
+        up_l = tm.sqrt(tm.dot(up, g @ up))
+        up = up / up_l
+
+        right_i = g_inv @ tm.cross(fwd, up)
+        right_l = tm.sqrt(tm.dot(right_i, g @ right_i))
+        right = right_i / right_l
+
+        return ti.Matrix.rows([right, up, fwd])
+
+    def update(self, manifold):
+        axes = self.compute_basis(manifold, self.pos, self.yaw, self.pitch)
+        
+        self.yaw_basis = ti.Vector([axes[0, 0], axes[0, 1], axes[0, 2]])
+        self.pitch_basis = ti.Vector([axes[1, 0], axes[1, 1], axes[1, 2]])
+        self.rot = ti.Vector([axes[2, 0], axes[2, 1], axes[2, 2]])
 
         vu = self.vw * self.yaw_basis
         vv = -self.vh * self.pitch_basis
@@ -67,7 +93,7 @@ class Camera:
         self.p00 = vul + 0.5 * (self.pdu + self.pdv)
 
     def render(self, manifold, scene):
-        self.update()
+        self.update(manifold)
         self.render_kernel(manifold, scene, self.pos, self.p00, self.pdu, self.pdv)
 
     @ti.kernel
@@ -151,21 +177,26 @@ class Camera:
         
         return hit, norm, steps
 
-    # TODO: handle rotation and position changes relative to manifold basis
-    def handle_motion(self, gui: ti.GUI):
+    @ti.kernel
+    def step_camera(self, manifold: ti.template(), pos: vec3, vel: vec3) -> vec3:
+        new_pos, new_dir = manifold.step(pos, vel, 1.0)
+        return new_pos
+
+    def handle_motion(self, gui: ti.GUI, manifold: ti.template()):
         # navigation
-        if gui.is_pressed('w'):
-            self.pos -= self.rot * self.speed
-        if gui.is_pressed('s'):
-            self.pos += self.rot * self.speed
-        if gui.is_pressed('a'):
-            self.pos -= self.yaw_basis * self.speed
-        if gui.is_pressed('d'):
-            self.pos += self.yaw_basis * self.speed
-        if gui.is_pressed('e'):
-            self.pos += self.vup * self.speed
-        if gui.is_pressed('q'):
-            self.pos -= self.vup * self.speed
+        move_dir = ti.Vector([0.0, 0.0, 0.0])
+        
+        if gui.is_pressed('w'): move_dir[2] += 1
+        if gui.is_pressed('s'): move_dir[2] -= 1
+        if gui.is_pressed('d'): move_dir[0] += 1
+        if gui.is_pressed('a'): move_dir[0] -= 1
+        if gui.is_pressed('e'): move_dir[1] += 1
+        if gui.is_pressed('q'): move_dir[1] -= 1
+
+        if move_dir.norm() > 0:
+            move_dir = move_dir.normalized() * self.speed
+            vel = move_dir[0] * self.yaw_basis + move_dir[1] * self.pitch_basis + move_dir[2] * self.rot
+            self.pos = self.step_camera(manifold, self.pos, vel)
         
         # rotation
         if gui.is_pressed(ti.GUI.LEFT):
@@ -179,4 +210,4 @@ class Camera:
             self.pitch += 0.05
             self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
         
-        self.update()
+        self.update(manifold)
