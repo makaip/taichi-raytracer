@@ -35,15 +35,17 @@ class Scene:
         else:
             raise OverflowError("HittableList is full")
     
-    def toggle_grid(self, spacing: float, thickness: float):
+    def toggle_grid(self, spacing: float, line_width_px: float):
         self.show_grid[None] = 1
         self.grid_spacing[None] = spacing
-        self.grid_thickness[None] = thickness
-    
+        self.grid_thickness[None] = line_width_px
+
     @ti.func
-    def grid_sdf(self, pos: vec3) -> float:
+    def grid_sdf(self, pos: vec3, dist_from_cam: float, px_world_size: float) -> float:
         s = self.grid_spacing[None]
-        t = self.grid_thickness[None]
+
+        t = self.grid_thickness[None] * px_world_size * dist_from_cam
+        t = tm.max(t, 1e-5)
 
         p = pos - s * tm.floor(pos / s)
         p = tm.min(p, s - p)
