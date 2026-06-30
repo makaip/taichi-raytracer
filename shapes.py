@@ -45,13 +45,13 @@ class Scene:
         s = self.grid_spacing[None]
         t = self.grid_thickness[None]
 
-        p = pos % s
+        p = pos - s * tm.floor(pos / s)
         p = tm.min(p, s - p)
-        
-        dx = tm.sqrt(p.y**2 + p.z**2) - t
-        dy = tm.sqrt(p.x**2 + p.z**2) - t
-        dz = tm.sqrt(p.x**2 + p.y**2) - t
-        
+
+        dx = p.x - t
+        dy = p.y - t
+        dz = p.z - t
+
         return tm.min(dx, tm.min(dy, dz))
 
 @ti.dataclass

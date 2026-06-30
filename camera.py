@@ -61,11 +61,11 @@ class Camera:
         g = manifold.metric_tensor(pos, basis)
         g_inv = tm.inverse(g)
 
-        up_prj = tm.dot(fwd_i, g @ fwd_i)
-
-        fwd_l = tm.sqrt(up_prj)
+        fwd_norm2 = tm.dot(fwd_i, g @ fwd_i)
+        fwd_l = tm.sqrt(fwd_norm2)
         fwd = fwd_i / fwd_l
 
+        up_prj = tm.dot(up_i, g @ fwd)
         up = up_i - up_prj * fwd
         up_l = tm.sqrt(tm.dot(up, g @ up))
         up = up / up_l
@@ -89,7 +89,7 @@ class Camera:
         self.pdu = vu / self.image_width
         self.pdv = vv / self.image_height
 
-        vul = self.pos - self.rot - (vu / 2) - (vv / 2)
+        vul = self.pos + self.rot - (vu / 2) - (vv / 2)
         self.p00 = vul + 0.5 * (self.pdu + self.pdv)
 
     def render(self, manifold, scene):
