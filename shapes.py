@@ -18,6 +18,11 @@ class Scene:
         )
         self.count[None] = 0
 
+        self.show_grid = ti.field(dtype=ti.i32, shape=())
+        self.grid_spacing = ti.field(dtype=ti.f32, shape=())
+        self.grid_thickness = ti.field(dtype=ti.f32, shape=())
+        self.show_grid[None] = 0
+
     def clear(self):
         self.count[None] = 0
 
@@ -29,6 +34,25 @@ class Scene:
             self.count[None] += 1
         else:
             raise OverflowError("HittableList is full")
+    
+    def toggle_grid(self, spacing: float, thickness: float):
+        self.show_grid[None] = 1
+        self.grid_spacing[None] = spacing
+        self.grid_thickness[None] = thickness
+    
+    @ti.func
+    def grid_sdf(self, pos: vec3) -> float:
+        s = self.grid_spacing[None]
+        t = self.grid_thickness[None]
+
+        p = pos % s
+        p = tm.min(p, s - p)
+        
+        dx = tm.sqrt(p.y**2 + p.z**2) - t
+        dy = tm.sqrt(p.x**2 + p.z**2) - t
+        dz = tm.sqrt(p.x**2 + p.y**2) - t
+        
+        return tm.min(dx, tm.min(dy, dz))
 
 @ti.dataclass
 class Sphere:

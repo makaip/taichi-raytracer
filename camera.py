@@ -127,12 +127,12 @@ class Camera:
             hit, norm, depth = self.march_ray(manifold, scene, rpos, rdir)
             
             depth_col = 1.0
-            depth_col = MAX_DEPTH / ((4 * depth) + MAX_DEPTH)
+            depth_col = ((2 * MAX_DEPTH) / ((4 * depth) + MAX_DEPTH)) - 1
 
             if hit:
-                col_r = tm.clamp((norm.x * 0.5 + 0.5) * depth_col, 0.0, 1.0)
-                col_g = tm.clamp((norm.y * 0.5 + 0.5) * depth_col, 0.0, 1.0)
-                col_b = tm.clamp((norm.z * 0.5 + 0.5) * depth_col, 0.0, 1.0)
+                col_r = tm.clamp((norm.x * 0.5 + 0.5), 0.0, 1.0) * depth_col
+                col_g = tm.clamp((norm.y * 0.5 + 0.5), 0.0, 1.0) * depth_col
+                col_b = tm.clamp((norm.z * 0.5 + 0.5), 0.0, 1.0) * depth_col
 
             self.pixels[x, y] = vec3(col_r, col_g, col_b)
 
@@ -155,11 +155,21 @@ class Camera:
                 if (dist < min_dist):
                     min_dist = dist
                     closest_idx = idx
+            
+            if scene.show_grid[None]:
+                grid_dist = scene.grid_sdf(tmp_pos)
+                if grid_dist < min_dist:
+                    min_dist = grid_dist
+                    closest_idx = -2
                 
             if (min_dist < HIT_DIST):
                 basis = manifold.basis(tmp_pos)
                 g = manifold.metric_tensor(tmp_pos, basis)
-                norm = scene.objects[closest_idx].sdf_normal(tmp_pos, tm.inverse(g), manifold)
+
+                if closest_idx == -2:
+                    norm = vec3(1.0,1.0,1.0)
+                else:
+                    norm = scene.objects[closest_idx].sdf_normal(tmp_pos, tm.inverse(g), manifold)
 
                 hit = True
                 break
