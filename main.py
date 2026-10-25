@@ -23,14 +23,14 @@ def main():
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
     
-    manifold = Manifold(h=1e-4)
+    manifold = Manifold(h=1e-3)
     scene = Scene(max_objects=100)
     
     scene.toggle_grid(spacing=5.0, line_width_px=0.25)
 
     camera = Camera(
         manifold,
-        ti.Vector([0.0, 0.0, 0.0]),         # pos
+        ti.Vector([1.0, 1.0, 1.0]),         # pos
         0.0,                                # pitch
         math.radians(0),                    # yaw
         config["camera"]["image_width"],

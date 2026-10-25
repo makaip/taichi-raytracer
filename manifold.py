@@ -19,12 +19,12 @@ class Manifold:
 
     @ti.func
     def f(self, u: float, v: float, w: float) -> vec4:
-        return vec4(
-            u,
-            v,
-            w,
-            1
-        )
+        # return vec4(
+        #     u,
+        #     v,
+        #     w,
+        #     1
+        # )
 
         # return vec4(
         #     tm.sqrt(1.0 + u**2 + v**2 + w**2),
@@ -40,12 +40,12 @@ class Manifold:
         #     ti_sinh(u) * ti.sin(v) * ti.sin(w),
         # )
 
-        # return vec4(
-        #     ti.cos(u),
-        #     ti.sin(u) * ti.cos(v),
-        #     ti.sin(u) * ti.sin(v) * ti.cos(w),
-        #     ti.sin(u) * ti.sin(v) * ti.sin(w),
-        # )
+        return vec4(
+            ti.cos(u),
+            ti.sin(u) * ti.cos(v),
+            ti.sin(u) * ti.sin(v) * ti.cos(w),
+            ti.sin(u) * ti.sin(v) * ti.sin(w),
+        )
 
     @ti.func
     def basis(self, pos: vec3) -> mat3x4:

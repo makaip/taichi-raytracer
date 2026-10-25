@@ -13,6 +13,8 @@ mat3x4 = ti.types.matrix(3, 4, float)
 STEP_SIZE = 1e-2
 HIT_DIST = 1e-2
 MAX_DEPTH = 1500
+MAX_DIST = 25.0
+GRID_NEAR = 0.05
 
 
 @ti.data_oriented
@@ -125,10 +127,9 @@ class Camera:
             rdir *= scale
             px_size = tm.length(pdv)
 
-            hit, norm, depth = self.march_ray(manifold, scene, rpos, rdir, px_size)
-            
-            depth_col = 1.0
-            depth_col = ((2 * MAX_DEPTH) / ((4 * depth) + MAX_DEPTH)) - 1
+            hit, norm, depth = self.march_ray(manifold, scene, pos, rdir, px_size)
+
+            depth_col = tm.clamp(((2 * MAX_DIST) / (depth + MAX_DIST)) - 1, 0.0, 1.0)
 
             if hit:
                 col_r = tm.clamp((norm.x * 0.5 + 0.5), 0.0, 1.0) * depth_col
@@ -145,8 +146,9 @@ class Camera:
         tmp_pos = rpos
         tmp_dir = rdir
         steps = 0
+        travelled = 0.0
 
-        while steps < MAX_DEPTH:
+        while steps < MAX_DEPTH and travelled < MAX_DIST:
             min_dist = 1e10
             closest_idx = -1
 
@@ -157,9 +159,9 @@ class Camera:
                     min_dist = dist
                     closest_idx = idx
             
-            if scene.show_grid[None]:
-                dist_from_cam = tm.length(tmp_pos - rpos)
-                grid_dist = scene.grid_sdf(tmp_pos, dist_from_cam, px_size)
+            # skip grid when at camera
+            if scene.show_grid[None] and travelled > GRID_NEAR:
+                grid_dist = scene.grid_sdf(tmp_pos, travelled, px_size)
                 if grid_dist < min_dist:
                     min_dist = grid_dist
                     closest_idx = -2
@@ -185,9 +187,10 @@ class Camera:
 
             tmp_pos = new_pos
             tmp_dir = new_dir
+            travelled += dt
             steps += 1
-        
-        return hit, norm, steps
+
+        return hit, norm, travelled
 
     @ti.kernel
     def step_camera(self, manifold: ti.template(), pos: vec3, vel: vec3) -> vec3:
