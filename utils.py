@@ -25,7 +25,6 @@ def rotate_about_z(vec: vec3, angle: float) -> vec3:
     
     return rot_matrix @ vec
 
-
 def rotate_about_y(vec: vec3, angle: float) -> vec3:
     c, s = tm.cos(angle), tm.sin(angle)
     rot_matrix = tm.mat3([

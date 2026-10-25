@@ -26,7 +26,7 @@ def main():
     manifold = Manifold(h=1e-4)
     scene = Scene(max_objects=100)
     
-    scene.toggle_grid(spacing=1.0, line_width_px=2)
+    scene.toggle_grid(spacing=5.0, line_width_px=0.25)
 
     camera = Camera(
         manifold,

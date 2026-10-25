@@ -80,7 +80,7 @@ class Manifold:
             cur = self.f(pos.x, pos.y, pos.z)
             res = cur - target
             
-            if (tm.dot(res, res) < 1e-2):
+            if (tm.dot(res, res) < 1e-12):
                 break
             
             Jtr = vec3(0.0)

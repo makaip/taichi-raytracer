@@ -84,7 +84,7 @@ class Camera:
         self.rot = ti.Vector([axes[2, 0], axes[2, 1], axes[2, 2]])
 
         vu = self.vw * self.yaw_basis
-        vv = -self.vh * self.pitch_basis
+        vv = self.vh * self.pitch_basis
 
         self.pdu = vu / self.image_width
         self.pdv = vv / self.image_height
@@ -216,10 +216,10 @@ class Camera:
         if gui.is_pressed(ti.GUI.RIGHT):
             self.yaw += 0.05
         if gui.is_pressed(ti.GUI.UP):
-            self.pitch -= 0.05
+            self.pitch += 0.05
             self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
         if gui.is_pressed(ti.GUI.DOWN):
-            self.pitch += 0.05
+            self.pitch -= 0.05
             self.pitch = max(-math.radians(89), min(math.radians(89), self.pitch))
         
         self.update(manifold)

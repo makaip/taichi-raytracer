@@ -50,11 +50,11 @@ class Scene:
         p = pos - s * tm.floor(pos / s)
         p = tm.min(p, s - p)
 
-        dx = p.x - t
-        dy = p.y - t
-        dz = p.z - t
+        lx = tm.length(ti.Vector([p.y, p.z])) - t
+        ly = tm.length(ti.Vector([p.x, p.z])) - t
+        lz = tm.length(ti.Vector([p.x, p.y])) - t
 
-        return tm.min(dx, tm.min(dy, dz))
+        return tm.min(lx, tm.min(ly, lz))
 
 @ti.dataclass
 class Sphere:
