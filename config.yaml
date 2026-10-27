@@ -1,5 +1,8 @@
 camera:
-  image_width: 640
-  image_height: 400
+  # image_width: 640
+  # image_height: 400
+
+  image_width: 960
+  image_height: 800
 
   fov: 90
